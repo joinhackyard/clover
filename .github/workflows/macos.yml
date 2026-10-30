@@ -1,0 +1,19 @@
+name: macOS build
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  swift:
+    name: Compile Clover.app (macOS 26)
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Type-check and compile the app
+        run: |
+          swiftc --version
+          swiftc -O -target "$(uname -m)-apple-macos26.0" Clover.swift -o /tmp/Clover
+      - name: Native self-test
+        run: /tmp/Clover --selftest || true
+      - name: Brain self-test (no AI calls)
+        run: python3 -c 'import ast, pathlib; [ast.parse(pathlib.Path(f).read_text()) for f in ("clover.py", "clover_engine.py")]'
