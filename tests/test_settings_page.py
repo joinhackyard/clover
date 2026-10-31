@@ -97,6 +97,15 @@ class SettingsPageTests(unittest.TestCase):
                   {'do': 'set', 'k': 'azureApiVersion', 'v': 'v1'}, {'do': 'providerTest'}, {'do': 'providerModels'}):
             self.assertIn(m, out['posts'])
 
+    def test_permission_mode_derives_from_safe_and_bypass_confirms_first(self):
+        out = self.page("""const mode=()=>document.querySelector('#permmode [aria-checked=true]').dataset.v;
+            st.load({prefs:{hotkeyLabel:'⌃⌥Space',safe:false}}); const off=mode();
+            st.load({prefs:{hotkeyLabel:'⌃⌥Space',safe:true}}); const on=mode();
+            document.querySelector('#permmode [data-v=bypass]').click(); const asking=!$('bypassconfirm').hidden;
+            $('bypassok').click(); await tick(20); return [off,on,asking,mode()];""")
+        self.assertEqual(out['result'], ['bypass', 'ask', True, 'bypass'])
+        self.assertEqual([p for p in out['posts'] if p.get('k') == 'permissionMode'], [{'do': 'set', 'k': 'permissionMode', 'v': 'bypass'}])
+
     def test_sharing_compatibility_notice_preserves_saved_choice(self):
         out = self.page("""st.load({prefs:{hotkeyLabel:'⌃⌥Space',hideWhenSharing:true},sharingUnavailable:true});
             const before=[!$('sharingUnavailable').hidden,document.querySelector('[data-k=hideWhenSharing]').checked];
@@ -111,7 +120,8 @@ class SettingsPageTests(unittest.TestCase):
         self.assertGreater(len(lines), 40)
         self.assertEqual([t for t in lines if len(t.split()) > 14], [])   # rare detail goes in an info tip
         self.assertTrue(all(re.search(r'<i class="info" title="[^"]+">i</i></span>', m) for m in re.findall(r'<span>[^<]*<i class="info".*?</span>', page)))
-        self.assertIn('Risky actions need approval. Background agents use a scratch folder.', page)
+        self.assertIn('Deletes, sends, purchases and file changes show an Allow card.', page)
+        self.assertNotIn('data-k="safe"', page)   # Safety is the three-way permissionMode now
 
     def test_whisper_rows_follow_the_speech_model_and_report_status(self):
         out = self.page("""const rows=()=>[...document.querySelectorAll('[data-w]')].map(r=>!r.hidden);
@@ -174,13 +184,13 @@ class SettingsPageTests(unittest.TestCase):
         self.assertEqual(out['result'], [[True, True, 'Hold to talk. Double-tap to lock.'], True])
         self.assertIn({'do': 'globeKey'}, out['posts'])
 
-    def test_cleanup_is_disabled_with_a_reason_for_pi_and_devin(self):
+    def test_cleanup_is_disabled_with_a_reason_for_antigravity(self):
         out = self.page("""const state=client=>{st.load({prefs:{client,hotkeyLabel:'⌃⌥Space',dictateHotkeyLabel:'⌃⌥D',dictateMode:'cleanup'}});
             const clean=document.querySelector('[data-k=dictateMode] [data-v=cleanup]');
             return [clean.disabled,$('dictatemodehint').textContent];};
-            return [state('pi'),state('devin'),state('claude')];""")
-        self.assertEqual(out['result'], [[True, 'Clean up needs Claude.'],
-                                         [True, 'Clean up needs Claude.'],
+            return [state('antigravity'),state('direct'),state('claude')];""")
+        self.assertEqual(out['result'], [[True, 'Clean up needs Claude Code or an API key.'],
+                                         [False, 'Clean up drops fillers, fixes misheard words.'],
                                          [False, 'Clean up drops fillers, fixes misheard words.']])
 
     def test_dictation_clash_warns_in_its_row_then_settles(self):
@@ -276,7 +286,7 @@ class SettingsPageTests(unittest.TestCase):
         self.assertIn({'do': 'models'}, out['posts'])
 
     def test_running_local_server_can_fill_address_and_model(self):
-        out = self.page("""P.client='pi'; st.local([{name:'Ollama',base:'http://localhost:11434',models:['qwen3']}]);
+        out = self.page("""P.client='antigravity'; st.local([{name:'Ollama',base:'http://localhost:11434',models:['qwen3']}]);
             const offered=!$('localserver').hidden&&$('uselocal').textContent==='Use Ollama';
             $('uselocal').click(); return [offered,P.client,P.apiBase,P.apiModel,$('localserver').hidden];""")
         self.assertEqual(out['result'], [True, 'claude', 'http://localhost:11434', 'qwen3', True])
@@ -284,16 +294,16 @@ class SettingsPageTests(unittest.TestCase):
         self.assertIn({'do': 'set', 'k': 'apiBase', 'v': 'http://localhost:11434'}, out['posts'])
         self.assertIn({'do': 'set', 'k': 'apiModel', 'v': 'qwen3'}, out['posts'])
 
-    def test_pi_client_explains_its_provider_and_hides_claude_models(self):
-        out = self.page("""st.load({prefs:{client:'pi',hotkeyLabel:'⌃⌥Space'}});
+    def test_antigravity_explains_its_sign_in_and_hides_claude_models(self):
+        out = self.page("""st.load({prefs:{client:'antigravity',hotkeyLabel:'⌃⌥Space'}});
             const model=document.querySelector('[data-k=model]').closest('.row');
             return [$('brainlede').textContent,$('clientwhy').textContent,model.hidden,$('planname').textContent,$('safenote').textContent,$('agentsettings').hidden];""")
         lede, why, hidden, plan, safety, agents_hidden = out['result']
-        self.assertIn('selected in Pi', lede)
-        self.assertIn('local models', why)
+        self.assertIn('Antigravity', lede)
+        self.assertIn('No API key needed', why)
         self.assertTrue(hidden)
-        self.assertEqual(plan, 'Pi')
-        self.assertIn('approval', safety)
+        self.assertEqual(plan, 'Antigravity')
+        self.assertIn('Clover checks each command', safety)
         self.assertTrue(agents_hidden)
 
     def test_stale_server_models_cannot_change_the_current_model(self):

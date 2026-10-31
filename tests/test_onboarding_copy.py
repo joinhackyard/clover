@@ -74,21 +74,33 @@ for (const [label, keys] of Object.entries(want)) if (JSON.stringify(capsOf(labe
         self.assertIn('id="pt-lead"', self.page)
         self.assertIn('stop-color="#0a84ff"', self.page)   # blue, like the app's leader
 
-    def test_safe_mode_line_shows_only_while_it_is_on(self):
-        self.assertIn("$('safe-note').hidden = prefs.safe === false", self.page)
-        self.assertIn('"safe": Prefs.bool("safe")', (ROOT / 'Clover.swift').read_text())
+    def test_permission_mode_replaces_safe_mode(self):
+        self.assertNotIn('Safe mode', self.page)
+        self.assertNotIn('safe-note', self.page)
+        self.assertIn("prefs.safe === false ? 'bypass' : 'ask'", self.page)   # no permissionMode yet: derived from the old safe pref
+        self.assertIn("post({ do: 'set', k: 'permissionMode', v })", self.page)
+        self.assertIn('id="pm-confirm"', self.page)   # Bypass confirms inline before it saves
+        for mode in ('data-v="ask">Ask first', 'data-v="auto">Auto', 'data-v="bypass">Bypass'):
+            self.assertIn(mode, self.page)
+
+    def test_providers_are_claude_code_antigravity_and_api_key(self):
+        self.assertNotRegex(self.page, r'(?i)devin|\bpi\b')
+        self.assertEqual(re.findall(r'class="opt" role="radio" data-p="(\w+)"', self.page), ['claude', 'antigravity', 'direct'])
+        self.assertIn('sign in once with <code>agy</code>', self.page)
+        for p in ('anthropic', 'openai', 'azure', 'gemini', 'openrouter', 'groq', 'mistral', 'deepseek', 'xai', 'ollama', 'custom'):
+            self.assertIn(f'    {p}: [', self.page)
 
     def test_mini_screen_copy_matches_its_click(self):
         self.assertNotIn('ask to focus it', self.page)
         self.assertIn('click it to open that window', self.page)   # the mini screen opens its window on click (README)
 
-    def test_meeting_page_says_what_devin_and_pi_get(self):
+    def test_meeting_page_says_what_other_providers_get(self):
         brain = (ROOT / 'clover.py').read_text()
         self.assertIn("if client() != 'claude':\n        raise RuntimeError(f'Meeting Copilot stays on this Mac", brain)   # no answers off Claude
         self.assertIn("$('mt-hint').textContent = other ? `With ${NAMES[provider]}, it saves the transcript on this Mac. Answers and recaps need Claude.`", self.page)
 
     def test_provider_row_names_no_client_before_the_check(self):
-        self.assertIn("['claude', 'AI Provider', 'Checking…',", self.page)   # Devin, Pi and server users never read "Claude" first
+        self.assertIn("['claude', 'AI Provider', 'Checking…',", self.page)   # Antigravity, API key and server users never read "Claude" first
         self.assertNotIn('Checking your Claude sign-in', self.page)
         self.assertIn("$('wk-brain').hidden = $('wk-plan').hidden = provider === 'server'", self.page)   # no plan to choose on a custom server
 

@@ -45,6 +45,9 @@ SCENES = [
     ('settings-meetings', "st.tab('meetings');up();st.meetings(MEETINGS_JSON)"),
     ('settings-usage', "st.tab('usage');up()"),
     ('settings-account', "st.tab('account');up()"),
+    ('settings-account-bypass', "st.tab('account');up();document.querySelector('#permmode [data-v=bypass]').click()"),
+    ('settings-intelligence-antigravity', "load({client:'antigravity'});st.tab('brain');up()"),
+    ('settings-intelligence-gemini', "load({client:'direct',provider:'gemini'});st.tab('brain');up()"),
     ('settings-account-end', "document.querySelector('main').scrollTop=1e5"),
     ('settings-apps', "st.tab('apps');st.apps(APPS_JSON)"),
     ('settings-about', "st.tab('about');up()"),
@@ -75,7 +78,7 @@ func onboardingScene(_ look:Int){
  let name=looks[look].0;ow.orderFrontRegardless()
  ov.evaluateJavaScript("ob.prefs({draw:true,meeting:false,routing:'balanced',dictateMode:'verbatim',dictateHotkeyLabel:''});ob.plan({ok:true,client:'claude',text:'Signed in. Claude Max.'});ob.set({mic:true,speech:true,ax:true,screen:false,auto:true});document.querySelector('[data-go=\"perms\"]').click()"){_,_ in
   after(1.4){snap("setup-perms-"+name,ow)
-   ov.evaluateJavaScript("document.getElementById('client-alt').click();document.querySelector('.opt[data-p=\"server\"]').click();ob.models(['qwen3','llama3.2'])"){_,_ in
+   ov.evaluateJavaScript("document.getElementById('client-alt').click();document.getElementById('srv-toggle').click();ob.models(['qwen3','llama3.2'])"){_,_ in
     after(0.9){snap("setup-provider-"+name,ow)
      ov.evaluateJavaScript("document.getElementById('prov-cancel').click()"){_,_ in after(0.6){featurePage(0,look)}}}}}}}
 func featurePage(_ i:Int,_ look:Int){

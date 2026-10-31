@@ -2,194 +2,254 @@
 <html><head><meta charset="utf-8">
 <!-- Clover settings. Clover.swift calls st.load({prefs, state}) and gets {do:'set', k, v} and other actions back. -->
 <style>
+  /* Clover · shared tokens (the overlay uses the same). Warm paper, ink, one green. */
   :root {
-    --hy-clover:#2FD27A; --hy-clover-deep:#0E9F5A; --hy-mint:#8BF5C8; --hy-petal:#FF7EB6; --hy-sun:#FFD166; --hy-ink:#0B1F17;   /* Hackyard */
-    --fg: #1d1d1f; --fg2: #6e6e73; --fg3: #6e6e73; --card: #fff; --bg: #f5f5f7; --ctl: #fff; --well: rgba(0,0,0,.045); --line: rgba(0,0,0,.08);
-    --side: rgba(246,250,248,.42); --sel: rgba(14,159,90,.08); --accent: #2fd27a; --on-accent: #0b1f17; --accent-text: #0a7a45; --ring: rgba(47,210,122,.45); --green: #2fd27a; --track: rgba(120,120,128,.24);
-    --ok-text: #1f7a35; --warn: #c93400; --danger: #d70015;   /* text on white: the light system colours, ≥4.5:1 */
-    --on: #fff; --pop: rgba(255,255,255,.96); --ease: cubic-bezier(.4,0,.2,1); --out: cubic-bezier(.16,1,.3,1); --spring: cubic-bezier(.34,1.42,.64,1); color-scheme: light dark;
-    --hover: color-mix(in srgb, var(--fg) 4%, var(--card)); --lift: .96;   /* --hover is opaque: floating row actions mask text with it */
+    --bg: #FBF8F3; --surface: #FFFFFF; --ink: #1D1B18; --ink-2: #5E5A53; --ink-3: #8F8A81; --line: rgba(29,27,24,.09);
+    --accent: #2E9E6A; --accent-soft: color-mix(in oklab, var(--accent) 14%, transparent); --sage: #A8C3A0; --petal: #F2A7B8; --sun: #F4C76B;
+    --hint: #716B62; --accent-ink: #237A52; --warn: #A84B0C; --danger: #B8322A; --ok-text: #237A52;   /* text tokens: each ≥4.5:1 on --bg and --surface */
+    --side: color-mix(in oklab, var(--bg) 78%, transparent); --fill: color-mix(in oklab, var(--ink) 5%, transparent); --fill-2: color-mix(in oklab, var(--ink) 8%, transparent);
+    --track: color-mix(in oklab, var(--ink) 15%, transparent); --seg-on: #FFFFFF; --pop: rgba(255,255,255,.97); --tile-ink: #2F2A24;
+    --shadow: 0 0 0 .5px var(--line), 0 1px 2px rgba(29,27,24,.04), 0 3px 10px -4px rgba(29,27,24,.06);
+    --shadow-lift: 0 0 0 .5px var(--line), 0 2px 4px rgba(29,27,24,.05), 0 12px 32px -8px rgba(29,27,24,.16);
+    --ring: 0 0 0 3px color-mix(in oklab, var(--accent) 28%, transparent);
+    --ease-out: cubic-bezier(.23, 1, .32, 1); --ease: cubic-bezier(.4, 0, .2, 1);
+    --spring: linear(0, 0.119, 0.358, 0.599, 0.791, 0.921, 0.995, 1.029, 1.038, 1.034, 1.025, 1.016, 1.008, 1.003, 1, 0.999, 1);
+    --settle: linear(0, 0.109, 0.309, 0.501, 0.656, 0.77, 0.849, 0.903, 0.938, 0.961, 0.976, 0.985, 0.991, 0.994, 0.997, 0.998, 1);
+    color-scheme: light dark;
   }
   @media (prefers-color-scheme: dark) { :root {
-    --fg: #f5f5f7; --fg2: #a1a1a6; --fg3: #98989d; --ok-text: #34c759; --warn: #ff9f0a; --danger: #ff453a; --card: #262a28; --bg: #1c1f1e; --ctl: rgba(255,255,255,.1); --well: rgba(255,255,255,.07); --line: rgba(255,255,255,.08);
-    --side: rgba(0,0,0,.14); --sel: rgba(139,245,200,.09); --accent-text: #5fe39a; --track: rgba(120,120,128,.36); --on: #636366; --pop: rgba(40,44,42,.96); --lift: 1.2;
+    --bg: #1A1917; --surface: #23221F; --ink: #F4F1EA; --ink-2: #B9B4AA; --ink-3: #85807A; --line: rgba(244,241,234,.09);
+    --accent: #4CC38A; --hint: #9A958D; --accent-ink: #4CC38A; --warn: #F0A048; --danger: #FF8A7A; --ok-text: #4CC38A;
+    --seg-on: #3A3834; --pop: rgba(43,42,38,.97); --tile-ink: #2F2A24;
+    --shadow: 0 0 0 .5px var(--line), 0 1px 2px rgba(0,0,0,.2); --shadow-lift: 0 0 0 .5px var(--line), 0 12px 32px -8px rgba(0,0,0,.5);
   } }
   html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; -webkit-user-select: none; cursor: default;
-    font: 13px -apple-system, system-ui, sans-serif; color: var(--fg); -webkit-font-smoothing: antialiased; }
+    font: 13px/1.4 system-ui, -apple-system, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
   body { display: flex; }
+  ::selection { background: var(--accent-soft); }
+  code { font: 11.5px ui-monospace, Menlo, monospace; padding: 1px 5px; border-radius: 5px; background: var(--fill); color: var(--ink); }
 
-  #meetingq,#askq,#dictationsearch { width:100%;height:32px;box-sizing:border-box;background:var(--ctl);color:var(--fg);border:0;border-radius:8px;padding:0 12px;font:13px system-ui;box-shadow:inset 0 0 0 .5px var(--line),0 1px 1px rgba(0,0,0,.04);outline:none;-webkit-user-select:text; }
-  #meetingq:focus,#askq:focus,#dictationsearch:focus { box-shadow:inset 0 0 0 .5px var(--line),0 0 0 3px rgba(47,210,122,.35); }
-  #meetingcount { margin:12px 2px 8px;font-size:11px;color:var(--fg3); }
-  #meetinglist { overflow:hidden; }
-  .meetingrow { all:unset;display:block;box-sizing:border-box;width:100%;padding:13px 14px;cursor:pointer;transition:background .15s; }
-  .meetingrow + .meetingrow { box-shadow:inset 0 .5px 0 var(--line); }
-  .meetingrow:hover { background:var(--sel); }
-  .meetingrow:focus-visible,#meetingq:focus ~ #meetinglist .meetingrow.selected { background:rgba(47,210,122,.12);outline:none;box-shadow:inset 2px 0 0 var(--accent); }   /* the row Return opens, only while you browse */
-  .meetingrow b { display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
-  .meetingrow small { display:block;margin:4px 0;font-size:11px;color:var(--fg3);font-variant-numeric:tabular-nums; }
-  .meetingrow span { display:block;font-size:12px;color:var(--fg2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
-  #meetingdetail { animation:rise .24s var(--out); }
-  #meetingdetail h1 { overflow-wrap:anywhere;margin-top:14px; }
-  #meetingmeta { color:var(--fg3);font-size:12px;margin:8px 0 16px; }
-  #meetingdetail .tools { display:flex;gap:8px;align-items:center;flex-wrap:wrap; }
-  #meetingdetail .tools .red { margin-left:auto; }
-  #meetingsummary,#meetingactions,#meetingnotes,#meetinganswers { white-space:pre-wrap;line-height:1.6;overflow-wrap:anywhere;padding:14px;-webkit-user-select:text; }
-  .savedline { display:flex;gap:14px;padding:10px 14px;line-height:1.55;-webkit-user-select:text; }
-  .savedline + .savedline { box-shadow:inset 0 .5px 0 var(--line); }
-  .savedline time { color:var(--fg3);font-size:11px;flex:none;font-variant-numeric:tabular-nums;padding-top:2px; }
-  .savedline div { min-width:0;overflow-wrap:anywhere;white-space:pre-wrap; }
-  .savedline b { display:block;color:var(--fg2);font-size:11px;font-weight:500;margin-bottom:2px; }
-  #meetingmessage { font-size:12px;color:var(--fg2);margin:12px 0; }
-  #askq { margin-bottom:8px; } #asklist { max-height:320px;overflow-y:auto; }
-  #asklist .t span { -webkit-user-select:text;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap; }
-  #notice { position:fixed;bottom:16px;left:208px;right:0;margin:0 auto;width:fit-content;max-width:420px;display:flex;align-items:center;gap:12px;
-    padding:8px 8px 8px 14px;border-radius:11px;background:var(--pop);box-shadow:inset 0 0 0 .5px var(--line),0 6px 20px rgba(0,0,0,.18);font-size:12.5px;animation:rise .2s var(--out); }
+  /* search fields */
+  #meetingq, #askq, #dictationsearch, .search { width: 100%; height: 32px; box-sizing: border-box; background: var(--surface); color: var(--ink); border: 0; border-radius: 9px; padding: 0 12px;
+    font: 13px system-ui; box-shadow: var(--shadow); outline: none; -webkit-user-select: text; transition: box-shadow .16s var(--ease); }
+  :is(#meetingq, #askq, #dictationsearch, .search):focus { box-shadow: 0 0 0 .5px var(--line), var(--ring); }
+  :is(#meetingq, #askq, #dictationsearch, .search)::placeholder { color: var(--hint); }
+  #meetingcount { margin: 12px 4px 8px; font-size: 12px; color: var(--hint); }
+  #meetinglist { overflow: hidden; }
+  .meetingrow { all: unset; display: block; box-sizing: border-box; width: 100%; padding: 13px 16px; cursor: pointer; transition: background-color .15s var(--ease); }
+  .meetingrow + .meetingrow { box-shadow: inset 0 .5px 0 var(--line); }
+  .meetingrow:hover { background: var(--fill); }
+  .meetingrow:focus-visible, #meetingq:focus ~ #meetinglist .meetingrow.selected { background: var(--accent-soft); outline: none; box-shadow: inset 2px 0 0 var(--accent); }   /* the row Return opens, only while you browse */
+  .meetingrow b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .meetingrow small { display: block; margin: 4px 0; font-size: 12px; color: var(--hint); font-variant-numeric: tabular-nums; }
+  .meetingrow span { display: block; font-size: 12.5px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #meetingdetail { animation: enter .26s var(--ease-out); }
+  #meetingdetail h1 { overflow-wrap: anywhere; margin-top: 16px; }
+  #meetingmeta { color: var(--hint); font-size: 12.5px; margin: 6px 0 16px; }
+  #meetingdetail .tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  #meetingdetail .tools .red { margin-left: auto; }
+  #meetingsummary, #meetingactions, #meetingnotes, #meetinganswers { white-space: pre-wrap; line-height: 1.6; overflow-wrap: anywhere; padding: 14px 16px; -webkit-user-select: text; }
+  .savedline { display: flex; gap: 14px; padding: 10px 16px; line-height: 1.55; -webkit-user-select: text; }
+  .savedline + .savedline { box-shadow: inset 0 .5px 0 var(--line); }
+  .savedline time { color: var(--hint); font-size: 11.5px; flex: none; font-variant-numeric: tabular-nums; padding-top: 2px; }
+  .savedline div { min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .savedline b { display: block; color: var(--ink-2); font-size: 11.5px; font-weight: 600; margin-bottom: 2px; }
+  #meetingmessage { font-size: 12.5px; color: var(--ink-2); margin: 12px 0; }
+  #askq { margin-bottom: 8px; } #asklist { max-height: 320px; overflow-y: auto; }
+  #asklist .t span { -webkit-user-select: text; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; }
+
+  /* one status line for the window: rises in, snaps away */
+  #notice { position: fixed; bottom: 18px; left: 200px; right: 0; margin: 0 auto; width: fit-content; max-width: 440px; display: flex; align-items: center; gap: 12px; z-index: 5;
+    padding: 7px 7px 7px 14px; border-radius: 12px; background: var(--pop); box-shadow: var(--shadow-lift); font-size: 12.5px; animation: toast .28s var(--spring); }
+  #notice .btn { height: 26px; }
+  @keyframes toast { from { opacity: 0; transform: translateY(10px) scale(.97); } }
   @media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important;transition:none!important; } }
   body.reduce * { animation:none!important;transition:none!important; }
 
-  /* sidebar */
-  nav { width: 208px; flex: none; padding: 46px 10px 14px; box-sizing: border-box; background: var(--side);
-    box-shadow: inset -.5px 0 0 var(--line); display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+  /* sidebar: quiet, warm, the page you're on sits on a card */
+  nav { width: 200px; flex: none; padding: 46px 10px 14px; box-sizing: border-box; background: var(--side);
+    box-shadow: inset -.5px 0 0 var(--line); display: flex; flex-direction: column; gap: 1px; overflow-y: auto; }
   nav > * { flex-shrink: 0; }   /* a short window scrolls the sidebar instead of squashing it */
-  .me { display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px; }
-  .me .mark { width: 36px; height: 36px; flex: none; filter: drop-shadow(0 2px 4px rgba(14,159,90,.28)); transition: transform .5s var(--spring); }
-  .me:hover .mark { transform: rotate(-12deg) scale(1.06); }
-  .me b { display: block; font: 650 14px system-ui; letter-spacing: -.01em; } .me span { color: var(--fg3); font-size: 11px; }
-  .me span em { font-style: normal; color: var(--accent-text); font-weight: 500; }
+  .me { display: flex; align-items: center; gap: 10px; padding: 2px 8px 18px; }
+  .me .mark { width: 30px; height: 30px; flex: none; transition: transform .5s var(--spring); }
+  @media (hover: hover) and (pointer: fine) { .me:hover .mark { transform: rotate(-10deg); } }
+  .me b { display: block; font: 600 14px system-ui; letter-spacing: -.01em; } .me span { color: var(--hint); font-size: 11.5px; }
+  .me span em { font-style: normal; color: var(--ink-2); font-weight: 500; }
   svg.mark { display: block; overflow: visible; }
-  nav button { all: unset; flex-shrink: 0; display: flex; align-items: center; gap: 9px; height: 30px; padding: 0 8px; border-radius: 8px;
-    font-size: 13px; color: var(--fg); transition: background .2s var(--ease), color .2s, transform .35s var(--spring); }
-  nav button:active { transform: scale(.97); }
-  nav button .ni { transition: transform .45s var(--spring); } nav button.on .ni { transform: scale(1.06); }
-  nav button:hover { background: var(--sel); }
-  nav button.on { background: var(--accent); color: var(--on-accent); font-weight: 500; }
-  nav button:focus-visible { outline: 2px solid rgba(47,210,122,.5); }
-  .ni { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; flex: none; box-shadow: inset 0 .5px 0 rgba(255,255,255,.35), 0 .5px 1px rgba(0,0,0,.18); }
-  .ni svg { width: 14px; height: 14px; fill: none; stroke: #fff; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  nav button { all: unset; flex-shrink: 0; display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 9px;
+    font-size: 13px; color: var(--ink); transition: background-color .16s var(--ease), box-shadow .16s var(--ease), transform .16s var(--ease-out); }
+  nav button:active { transform: scale(.98); }
+  nav button:hover { background: var(--fill); }
+  nav button.on { background: var(--surface); box-shadow: var(--shadow); font-weight: 500; }
+  nav button:focus-visible { outline: none; box-shadow: var(--ring); }
+  .ni { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; flex: none; box-shadow: inset 0 0 0 .5px rgba(29,27,24,.08); }
+  .ni svg { width: 14px; height: 14px; fill: none; stroke: var(--tile-ink); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  @media (prefers-color-scheme: dark) { .ni { filter: saturate(.85) brightness(.9); } }
   nav .spacer { flex: 1; }
-  #feedbacknav { color: var(--accent-text); } #feedbacknav.on { color: var(--on-accent); } #feedbacknav .out { width: 13px; height: 13px; margin-left: -4px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }   /* reads as a link: easy to miss as plain text */
-  #dictationnav { margin-bottom: 10px; } #agentsnav .count { margin-left: auto; } #agentsnav.on .count { color: rgba(11,31,23,.7); }
-  nav .ver { color: var(--fg3); font-size: 11px; padding: 0 8px; }
+  #feedbacknav { color: var(--ink-2); gap: 6px; } #feedbacknav .out { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  #dictationnav { margin-bottom: 10px; } #agentsnav .count { margin-left: auto; font-size: 11.5px; color: var(--accent-ink); font-variant-numeric: tabular-nums; }
+  nav .ver { color: var(--hint); font-size: 11.5px; padding: 4px 8px 0; }
 
-  /* content */
-  main { flex: 1; overflow-y: auto; padding: 40px 34px 40px; box-sizing: border-box; background: var(--bg); box-shadow: inset .5px 0 0 var(--line); }
-  section { display: none; max-width: 600px; margin: 0 auto; }
-  section.on { display: block; animation: rise .5s var(--spring); }
-  @keyframes rise { from { opacity: 0; transform: translateY(10px) scale(.99); } }
-  h1 { font: 700 24px/1.15 system-ui; letter-spacing: -.02em; margin: 0 0 4px; }
-  h1:has(> .ni) { display: flex; align-items: center; gap: 11px; margin-bottom: 8px; }   /* the page's sidebar icon, larger, beside its title */
-  h1 .ni { width: 32px; height: 32px; border-radius: 8px; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.08); } h1 .ni svg { width: 19px; height: 19px; }
-  p.lede { color: var(--fg2); margin: 0 0 22px; line-height: 1.45; }
-  h3 { font: 600 13px system-ui; letter-spacing: -.005em; color: var(--fg); margin: 30px 2px 9px; }
+  /* content: one centered column, generous air */
+  main { flex: 1; overflow-y: auto; padding: 40px 36px 48px; box-sizing: border-box; background: var(--bg); }
+  section { display: none; max-width: 580px; margin: 0 auto; }
+  section.on { display: block; animation: enter .24s var(--ease-out); }
+  @keyframes enter { from { opacity: 0; transform: translateY(6px); } }
+  h1 { font: 600 22px/1.2 system-ui; letter-spacing: -.018em; margin: 0 0 4px; }
+  h1:has(> .ni) { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }   /* the page's sidebar icon, larger, beside its title */
+  h1 .ni { width: 30px; height: 30px; border-radius: 9px; } h1 .ni svg { width: 18px; height: 18px; }
+  p.lede { color: var(--ink-2); margin: 0 0 24px; line-height: 1.5; font-size: 13px; }
+  h3 { font: 600 12.5px system-ui; letter-spacing: -.003em; color: var(--ink-2); margin: 28px 4px 8px; }
 
-  .group { background: var(--card); border-radius: 12px; box-shadow: inset 0 0 0 .5px var(--line), 0 1px 2px rgba(0,0,0,.04); }
+  .group { background: var(--surface); border-radius: 12px; box-shadow: var(--shadow); }
   div.group { overflow: hidden; }   /* a hovered first or last row keeps the card's round corners */
   .group:has(> .empty:only-child) { background: none; box-shadow: none; }   /* an empty list is a quiet line, not a box */
-  .group > .empty:only-child { padding: 2px 2px 0; font-size: 12px; }
-  .row { display: flex; align-items: center; gap: 14px; min-height: 44px; padding: 8px 14px; box-sizing: border-box; }
-  .row.now { background: rgba(47,210,122,.1); } .row.now .btn { pointer-events: none; opacity: .5; }
+  .group > .empty:only-child { padding: 2px 4px 0; font-size: 12.5px; }
+  .row { display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 9px 16px; box-sizing: border-box; }
+  .row.now { background: var(--accent-soft); } .row.now .btn { pointer-events: none; opacity: .5; }
   .row { transition: opacity .2s var(--ease), background-color .15s var(--ease); } .row.dim { opacity: .45; }
-  .row:has(> .x):hover { background: var(--hover); }   /* list items with actions */
+  .row:has(> .x):hover { background: var(--fill); }   /* list items with actions */
   .row + .row { box-shadow: inset 0 .5px 0 var(--line); }
   .row .t { flex: 1; min-width: 0; } .row .t b { display: block; font-weight: 500; }
-  .row .t span { display: block; color: var(--fg3); font-size: 11.5px; margin-top: 2px; line-height: 1.35; }
-  .info { display: inline-grid; place-items: center; width: 11px; height: 11px; margin-left: 2px; vertical-align: -1px; border-radius: 50%;
-    box-shadow: inset 0 0 0 1px currentColor; font: 600 8px/1 -apple-system, system-ui; font-style: normal; cursor: help; }   /* the rare detail, on hover */
+  .row .t span { display: block; color: var(--ink-2); font-size: 12px; margin-top: 2px; line-height: 1.4; }
+  .info { display: inline-grid; place-items: center; width: 12px; height: 12px; margin-left: 2px; vertical-align: -1px; border-radius: 50%; color: var(--hint);
+    box-shadow: inset 0 0 0 1px currentColor; font: 600 8px/1 system-ui; font-style: normal; cursor: help; }   /* the rare detail, on hover */
 
-  /* switch */
+  /* switch: the knob springs across; it stretches under your finger */
   .sw { position: relative; width: 38px; height: 22px; flex: none; }
   .sw input { appearance: none; margin: 0; width: 100%; height: 100%; border-radius: 11px; background: var(--track);
-    transition: background .2s var(--ease); cursor: pointer; }
+    transition: background-color .2s var(--ease); cursor: pointer; }
   .sw input:checked { background: var(--accent); }
-  .sw input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 9px; background: #fff;
-    box-shadow: 0 1px 3px rgba(0,0,0,.25), 0 0 0 .5px rgba(0,0,0,.04); transition: transform .42s var(--spring), width .2s var(--ease); }
-  .sw input:checked::after { transform: translateX(16px); }
-  .sw input:active::after { width: 22px; } .sw input:checked:active::after { transform: translateX(12px); }   /* the knob stretches under your finger, like macOS */
-  .sw input:focus-visible { outline: 3px solid rgba(47,210,122,.45); outline-offset: 2px; }
+  .sw input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 9px; background: #fff; transform-origin: left center;
+    box-shadow: 0 1px 2px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.08), 0 0 0 .5px rgba(0,0,0,.04); transition: transform .32s var(--spring); }
+  .sw input:checked::after { transform: translateX(16px); transform-origin: right center; }
+  .sw input:active::after { transform: scaleX(1.2); } .sw input:checked:active::after { transform: translateX(16px) scaleX(1.2); }
+  .sw input:focus-visible { outline: none; box-shadow: var(--ring); }
 
   /* segmented */
-  .seg { display: inline-flex; padding: 2px; border-radius: 8px; background: var(--track); flex: none; }
-  .seg button { all: unset; padding: 4px 11px; border-radius: 6px; font-size: 12px; color: var(--fg); transition: background .2s, box-shadow .2s, transform .35s var(--spring); }
-  .seg button:active { transform: scale(.95); }
-  .seg button.on { background: var(--on); box-shadow: 0 1px 3px rgba(0,0,0,.15), inset 0 0 0 .5px var(--line); }
-  .seg button:focus-visible { outline: 2px solid rgba(47,210,122,.5); }
+  .seg { display: inline-flex; padding: 2px; border-radius: 9px; background: var(--fill-2); flex: none; }
+  .seg button { all: unset; padding: 4px 12px; border-radius: 7px; font-size: 12.5px; color: var(--ink-2); cursor: pointer;
+    transition: background-color .16s var(--ease), box-shadow .16s var(--ease), color .16s var(--ease), transform .16s var(--ease-out); }
+  .seg button:active { transform: scale(.96); }
+  .seg button.on { background: var(--seg-on); color: var(--ink); font-weight: 500; box-shadow: 0 1px 2px rgba(29,27,24,.1), 0 0 0 .5px var(--line); }
+  .seg button:focus-visible { outline: none; box-shadow: var(--ring); }
   .seg button:disabled { opacity: .4; pointer-events: none; }
   .shortcut + .group { margin-top: 12px; }
-  /* AI provider: four cards, like System Settings' appearance picker */
-  .seg.cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 0; background: none; }
-  .seg.cards button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 11px 12px 10px; border-radius: 12px; background: var(--card);
-    box-shadow: inset 0 0 0 .5px var(--line), 0 1px 2px rgba(0,0,0,.04); cursor: pointer; min-width: 0; transition: box-shadow .25s var(--ease), transform .4s var(--spring), background .2s; }
-  .seg.cards button .ni { margin-bottom: 7px; width: 26px; height: 26px; border-radius: 7px; } .seg.cards button .ni svg { width: 16px; height: 16px; }
-  .seg.cards button b { font-weight: 600; font-size: 12.5px; } .seg.cards button small { color: var(--fg3); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-  .seg.cards button:hover { background: var(--hover); }
-  .seg.cards button.on { background: var(--card); box-shadow: inset 0 0 0 2px var(--accent), 0 0 0 4px rgba(47,210,122,.16), 0 4px 14px rgba(14,159,90,.12); }
-  .seg.cards button.on .ni { animation: pop .5s var(--spring); }
-  @keyframes pop { 40% { transform: scale(1.18) rotate(-6deg); } }
-  #clientwhy { margin: 10px 2px 0; }
-  #direct:not([hidden]), [data-pv]:not([hidden]) { animation: rise .45s var(--spring); }
-  .row.key:hover { background: none; } .row.key .field { flex: 0 0 min(210px, 40%); text-align: left; }
-  .row > .x.eye { opacity: 1; transform: none; color: var(--fg3); margin-left: -6px; }
-  .row > .x.eye:hover { color: var(--accent-text); background: var(--sel); }
+
+  /* AI provider: three cards, like System Settings' appearance picker */
+  .seg.cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 0; background: none; }
+  .seg.cards button { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 14px 14px 12px; border-radius: 12px; background: var(--surface);
+    box-shadow: var(--shadow); min-width: 0; color: var(--ink); transition: box-shadow .2s var(--ease), transform .16s var(--ease-out); }
+  .seg.cards button .ni { margin-bottom: 10px; width: 28px; height: 28px; border-radius: 8px; } .seg.cards button .ni svg { width: 16px; height: 16px; }
+  .seg.cards button b { font-weight: 600; font-size: 13px; } .seg.cards button small { color: var(--ink-2); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .seg.cards button::after { content: ""; position: absolute; top: 12px; right: 12px; width: 16px; height: 16px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--track);
+    transition: box-shadow .22s var(--ease); }
+  .seg.cards button.on { box-shadow: 0 0 0 1.5px var(--accent), 0 4px 16px -6px color-mix(in oklab, var(--accent) 40%, transparent); }
+  .seg.cards button.on::after { box-shadow: inset 0 0 0 5px var(--accent); }
+  @media (hover: hover) and (pointer: fine) { .seg.cards button:not(.on):hover { box-shadow: 0 0 0 .5px var(--line), 0 2px 4px rgba(29,27,24,.06), 0 8px 20px -10px rgba(29,27,24,.18); } }
+  #clientwhy { margin: 10px 4px 0; }
+  #direct:not([hidden]), #agy:not([hidden]), [data-pv]:not([hidden]) { animation: enter .26s var(--ease-out); }
+
+  /* API key → provider: a grouped list of every service, two columns */
+  .seg.picker { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; padding: 6px; border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
+  .seg.picker button { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 7px 8px; border-radius: 8px; color: var(--ink); }
+  .seg.picker button .mono { width: 24px; height: 24px; flex: none; border-radius: 7px; display: grid; place-items: center; font: 650 11px system-ui; color: var(--tile-ink); background: var(--t); letter-spacing: -.02em; }
+  .seg.picker button span { min-width: 0; display: grid; } .seg.picker button b { font-weight: 500; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .seg.picker button small { font-size: 11px; color: var(--hint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .seg.picker button:hover { background: var(--fill); }
+  .seg.picker button.on { background: var(--accent-soft); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 45%, transparent); font-weight: 400; }
+  .seg.picker button.on b { font-weight: 600; }
+  #provwhy { margin: 10px 4px 0; }
+  .row.key:hover { background: none; } .row .field.wide { flex: 0 0 min(230px, 44%); text-align: left; }
+  .row.key .field { flex: 0 0 min(210px, 40%); text-align: left; }
+  .field.pf, #agyModel, #apiBase, #apiKey, #apiModel, #agentApiModel, .row .field[data-k=wakeWordName] { height: 28px; padding: 0 10px; border-radius: 7px; background: var(--fill); text-align: left; box-sizing: border-box; flex: 0 0 min(230px, 44%); }
+  .row > .x.eye { opacity: 1; transform: none; color: var(--hint); margin-left: -8px; }
+  .row > .x.eye:hover { color: var(--ink); background: var(--fill); }
   #provstatus .dot { width: 7px; height: 7px; } #provstatus .dot.bad { background: var(--danger); }
   #provnote.ok { color: var(--ok-text); } #provnote.bad { color: var(--danger); } #provnote.wait { animation: blink 1.4s ease-in-out infinite; }
-  /* sound previews: little pills that bounce when they play */
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
-  .chip { all: unset; display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 10px 0 8px; border-radius: 12px; font-size: 12px; font-weight: 500; cursor: pointer;
-    color: var(--fg); background: var(--well); box-shadow: inset 0 0 0 .5px var(--line); transition: background .2s, transform .35s var(--spring); }
-  .chip:hover { background: var(--sel); } .chip:active { transform: scale(.92); } .chip:focus-visible { outline: 2px solid var(--ring); }
-  .chip svg { width: 11px; height: 11px; fill: currentColor; color: var(--accent-text); }
-  .chip.play { animation: boing .55s var(--spring); background: rgba(47,210,122,.18); }
-  @keyframes boing { 30% { transform: scale(1.12) translateY(-2px); } }
+  #provconn { box-shadow: inset 0 .5px 0 var(--line); }
 
-  select { font: 13px system-ui; color: var(--fg); background: var(--ctl); border: 0; border-radius: 6px; padding: 3px 6px;
-    box-shadow: inset 0 0 0 .5px var(--line), 0 1px 1px rgba(0,0,0,.05); }
-  input[type=range] { width: 150px; accent-color: var(--accent-text); }
-  .val { width: 44px; text-align: right; color: var(--fg2); font-variant-numeric: tabular-nums; }
+  /* Account → Safety: how much Clover asks before it acts */
+  .modes { padding: 4px 0; }
+  .mode { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: flex-start; gap: 12px; padding: 10px 16px; cursor: pointer; transition: background-color .15s var(--ease); }
+  .mode + .mode { box-shadow: inset 0 .5px 0 var(--line); }
+  .mode:hover { background: var(--fill); } .mode:focus-visible { background: var(--fill); box-shadow: inset 2px 0 0 var(--accent); }
+  .mode .radio { position: relative; width: 16px; height: 16px; margin-top: 1px; flex: none; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--track); transition: box-shadow .2s var(--ease); }
+  .mode .radio::after { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: #fff; opacity: 0; transform: scale(.4); transition: opacity .16s var(--ease), transform .3s var(--spring); }
+  .mode[aria-checked="true"] .radio { box-shadow: inset 0 0 0 8px var(--accent); }
+  .mode[aria-checked="true"] .radio::after { opacity: 1; transform: none; }
+  .mode b { display: block; font-weight: 500; } .mode span { display: block; margin-top: 2px; font-size: 12px; line-height: 1.4; color: var(--ink-2); }
+  .mode[data-v=bypass][aria-checked="true"] b { color: var(--warn); }
+  /* the confirm sheet: drops out of the Bypass row, origin at its top */
+  #bypassconfirm { margin-top: 10px; padding: 14px 16px; border-radius: 12px; background: var(--surface); transform-origin: top center;
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--warn) 40%, transparent), 0 8px 24px -10px rgba(29,27,24,.25); animation: sheet .28s var(--spring); }
+  #bypassconfirm b { display: flex; align-items: center; gap: 8px; font-weight: 600; } #bypassconfirm b svg { width: 16px; height: 16px; color: var(--warn); fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  #bypassconfirm p { margin: 6px 0 12px; color: var(--ink-2); font-size: 12.5px; line-height: 1.5; }
+  #bypassconfirm .acts { display: flex; justify-content: flex-end; gap: 8px; }
+  @keyframes sheet { from { opacity: 0; transform: translateY(-6px) scale(.98); } }
+
+  /* sound previews: little pills that nod when they play */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+  .chip { all: unset; display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 11px 0 9px; border-radius: 13px; font-size: 12px; font-weight: 500; cursor: pointer;
+    color: var(--ink); background: var(--fill); transition: background-color .16s var(--ease), transform .16s var(--ease-out); }
+  .chip:hover { background: var(--fill-2); } .chip:active { transform: scale(.95); } .chip:focus-visible { box-shadow: var(--ring); }
+  .chip svg { width: 10px; height: 10px; fill: currentColor; color: var(--accent-ink); }
+  .chip.play { animation: nod .4s var(--spring); background: var(--accent-soft); }
+  @keyframes nod { 35% { transform: scale(1.06); } }
+
+  select { font: 13px system-ui; color: var(--ink); background: var(--fill); border: 0; border-radius: 7px; padding: 4px 8px; height: 28px; outline: none; }
+  select:focus-visible { box-shadow: var(--ring); }
+  input[type=range] { width: 150px; accent-color: var(--accent); }
+  .val { width: 44px; text-align: right; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 
   /* the shortcut: big keycaps, one button to record a new one */
-  .shortcut { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 26px 16px 18px; border-radius: 11px;
-    background: var(--card); box-shadow: inset 0 0 0 .5px var(--line); transition: box-shadow .25s; }
-  .shortcut.rec { box-shadow: inset 0 0 0 2px var(--accent), 0 0 0 4px rgba(47,210,122,.15); }
-  .caps { display: flex; gap: 7px; min-height: 40px; align-items: center; }
-  .caps .cap { min-width: 40px; height: 40px; font-size: 16px; border-radius: 9px; padding: 0 12px; }
-  .caps .cap.wide { min-width: 96px; font-size: 14px; }
-  .caps .hint { color: var(--fg2); font-size: 14px; animation: blink 1.4s ease-in-out infinite; }
+  .shortcut { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 28px 16px 20px; border-radius: 14px;
+    background: var(--surface); box-shadow: var(--shadow); transition: box-shadow .25s var(--ease); }
+  .shortcut.rec { box-shadow: 0 0 0 1.5px var(--accent), var(--ring); }
+  .caps { display: flex; gap: 7px; min-height: 42px; align-items: center; }
+  .caps .cap { min-width: 42px; height: 42px; font-size: 16px; border-radius: 10px; padding: 0 12px; }
+  .caps .cap.wide { min-width: 100px; font-size: 14px; }
+  .caps .hint { color: var(--ink-2); font-size: 14px; animation: blink 1.4s ease-in-out infinite; }
   @keyframes blink { 50% { opacity: .45; } }
   .shortcut .acts { display: flex; gap: 8px; align-items: center; }
-  .shortcut small { color: var(--fg3); font-size: 11.5px; } .shortcut small.warn, .shortcut small.taken { color: var(--warn); }
-  .cap { min-width: 26px; height: 26px; padding: 0 7px; box-sizing: border-box; border-radius: 6px; display: grid; place-items: center;
-    font: 500 12px system-ui; background: linear-gradient(#fdfdfd, #e8e8ed); color: #1d1d1f;
-    box-shadow: 0 0 0 .5px rgba(0,0,0,.16), 0 1.5px 0 rgba(0,0,0,.16); }
-  @media (prefers-color-scheme: dark) { .cap { background: linear-gradient(#48484a, #3a3a3c); color: #f5f5f7;
-    box-shadow: 0 0 0 .5px rgba(0,0,0,.6), 0 1.5px 0 rgba(0,0,0,.6); } }
+  .shortcut small { color: var(--ink-2); font-size: 12px; } .shortcut small.warn, .shortcut small.taken { color: var(--warn); }
+  .cap { min-width: 26px; height: 26px; padding: 0 7px; box-sizing: border-box; border-radius: 6px; display: grid; place-items: center; font-style: normal;
+    font: 500 12px system-ui; background: var(--surface); color: var(--ink);
+    box-shadow: 0 0 0 .5px rgba(29,27,24,.14), 0 1.5px 0 rgba(29,27,24,.12), 0 2px 6px -2px rgba(29,27,24,.1); }
+  @media (prefers-color-scheme: dark) { .cap { background: #34322E; box-shadow: 0 0 0 .5px rgba(0,0,0,.5), 0 1.5px 0 rgba(0,0,0,.5); } }
   /* a second shortcut in a row: a field that records like the big one, with its own clear button */
   .keyfield { position: relative; flex: none; }
-  .kf { all: unset; box-sizing: border-box; min-width: 140px; height: 28px; padding: 0 10px; border-radius: 7px; display: flex; gap: 4px;
-    align-items: center; justify-content: center; font-size: 12.5px; font-weight: 500; color: var(--accent-text); cursor: pointer;
-    background: var(--ctl); box-shadow: inset 0 0 0 .5px var(--line), 0 1px 1px rgba(0,0,0,.05); transition: box-shadow .2s; }
-  .kf.set { padding-right: 30px; } .kf .cap { min-width: 20px; height: 20px; padding: 0 5px; font-size: 11px; border-radius: 4px; }
-  .kf.rec { color: var(--fg2); box-shadow: inset 0 0 0 1.5px var(--accent), 0 0 0 3px rgba(47,210,122,.18); }
-  .kf.rec > span { animation: blink 1.4s ease-in-out infinite; } .kf.bad { box-shadow: inset 0 0 0 1.5px #ff9f0a; }
-  .kf:focus-visible { outline: 2px solid rgba(47,210,122,.5); }
+  .kf { all: unset; box-sizing: border-box; min-width: 140px; height: 28px; padding: 0 10px; border-radius: 8px; display: flex; gap: 4px;
+    align-items: center; justify-content: center; font-size: 12.5px; font-weight: 500; color: var(--accent-ink); cursor: pointer;
+    background: var(--fill); transition: box-shadow .2s var(--ease); }
+  .kf.set { padding-right: 30px; } .kf .cap { min-width: 20px; height: 20px; padding: 0 5px; font-size: 11px; border-radius: 5px; }
+  .kf.rec { color: var(--ink-2); box-shadow: inset 0 0 0 1.5px var(--accent), var(--ring); }
+  .kf.rec > span { animation: blink 1.4s ease-in-out infinite; } .kf.bad { box-shadow: inset 0 0 0 1.5px var(--warn); }
+  .kf:focus-visible { box-shadow: var(--ring); }
   .keyfield .x { position: absolute; right: 4px; top: 3px; }
   .row .t span.warn, .row .t span.taken { color: var(--warn); }
 
-  /* buttons */
-  .btn { all: unset; height: 26px; padding: 0 12px; border-radius: 7px; font-size: 12.5px; font-weight: 500; flex: none;
-    background: var(--ctl); box-shadow: inset 0 0 0 .5px var(--line), 0 1px 1px rgba(0,0,0,.05); transition: filter .15s, transform .1s; }
-  .btn:hover { filter: brightness(var(--lift)); } .btn:active { transform: scale(.97); }
-  .btn.blue { background: var(--accent); color: var(--on-accent); box-shadow: inset 0 -.5px 0 rgba(0,0,0,.12), 0 1px 2px rgba(14,159,90,.25); }
+  /* buttons: quiet surfaces; the one primary action is ink */
+  .btn { all: unset; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; height: 28px; padding: 0 12px; border-radius: 8px; font-size: 12.5px; font-weight: 500; flex: none; cursor: pointer;
+    color: var(--ink); background: var(--surface); box-shadow: 0 0 0 .5px rgba(29,27,24,.14), 0 1px 2px rgba(29,27,24,.06);
+    transition: background-color .15s var(--ease), box-shadow .15s var(--ease), transform .12s var(--ease-out); }
+  @media (prefers-color-scheme: dark) { .btn { background: #34322E; box-shadow: 0 0 0 .5px rgba(244,241,234,.1), 0 1px 2px rgba(0,0,0,.3); } }
+  .btn:hover { background: color-mix(in oklab, var(--surface) 94%, var(--ink)); } .btn:active { transform: scale(.97); }
+  .btn.blue { background: var(--ink); color: var(--bg); box-shadow: 0 1px 2px rgba(29,27,24,.18); }
+  .btn.blue:hover { background: color-mix(in oklab, var(--ink) 88%, var(--bg)); }
   .btn.red { color: var(--danger); }
-  .btn:focus-visible { outline: 2px solid rgba(47,210,122,.5); }
+  .btn.warn { background: var(--warn); color: #fff; box-shadow: none; } @media (prefers-color-scheme: dark) { .btn.warn { color: #1A1917; } }
+  .btn:focus-visible { box-shadow: var(--ring); }
+  .btn svg { width: 13px; height: 13px; fill: currentColor; }
 
   /* usage */
   .stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
   .stat { grid-column: span 2; } .stat:nth-child(n+4) { grid-column: span 3; }   /* three totals, then the two averages fill the row */
-  .stat { background: var(--card); border-radius: 11px; padding: 14px; box-shadow: inset 0 0 0 .5px var(--line); }
-  .stat small, .dstats small { color: var(--fg3); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
-  .stat b, .dstats b { display: block; font: 600 24px system-ui; letter-spacing: -.02em; margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
-  .stat span, .dstats span { color: var(--fg2); font-size: 12px; }
+  .stat { background: var(--surface); border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow); animation: enter .3s var(--ease-out) backwards; }
+  .stat:nth-child(2) { animation-delay: .04s; } .stat:nth-child(3) { animation-delay: .08s; } .stat:nth-child(4) { animation-delay: .12s; } .stat:nth-child(5) { animation-delay: .16s; }
+  .stat small, .dstats small { color: var(--ink-2); font-size: 12px; font-weight: 500; }
+  .stat b, .dstats b { display: block; font: 600 22px system-ui; letter-spacing: -.02em; margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
+  .stat span, .dstats span { color: var(--hint); font-size: 12px; }
   /* dictation: one card, four numbers split by hairlines */
   .dstats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .dstats > div { padding: 14px 16px 13px; min-width: 0; }
@@ -200,134 +260,136 @@
 
   /* memory */
   .rule { display: flex; align-items: center; gap: 10px; }
-  .rule .t { color: var(--fg); }
+  .rule .t { color: var(--ink); }
   .rule .field { text-align: left; }
   /* a receipt in the box opened Settings here: the item glows once, then settles */
   .flash { animation: flash 2.2s var(--ease) .35s backwards; }
-  @keyframes flash { 0%, 35% { background: rgba(47,210,122,.2); box-shadow: inset 2px 0 0 var(--accent); } }
-  .x { all: unset; width: 22px; height: 22px; border-radius: 11px; display: grid; place-items: center; color: var(--fg3); font-size: 15px; }
-  .x:hover { background: var(--sel); color: var(--danger); }
-  .x:focus-visible, h3 .all:focus-visible { outline: 2px solid rgba(47,210,122,.5); }
+  @keyframes flash { 0%, 35% { background: var(--accent-soft); box-shadow: inset 2px 0 0 var(--accent); } }
+  .x { all: unset; width: 22px; height: 22px; border-radius: 11px; display: grid; place-items: center; color: var(--hint); font-size: 15px; cursor: pointer; }
+  .x:hover { background: var(--fill); color: var(--danger); }
+  .x:focus-visible, h3 .all:focus-visible { box-shadow: var(--ring); }
   /* a list row's actions: quiet icons at the far right, shown on hover or keyboard focus */
-  .row > .x { width: 26px; height: 26px; border-radius: 7px; cursor: pointer; opacity: 0; transform: translateX(6px);
-    transition: opacity .18s var(--ease), transform .26s var(--out), background .15s, color .15s; }
+  .row > .x { width: 26px; height: 26px; border-radius: 7px; cursor: pointer; opacity: 0; transform: translateX(4px);
+    transition: opacity .16s var(--ease), transform .22s var(--ease-out), background-color .15s, color .15s; }
   .row:hover > .x, .row:focus-within > .x, .row > .x.save { opacity: 1; transform: none; }
   .row > .x + .x { margin-left: -10px; }
   .x svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
-  .x.copy:hover, .x.save:hover { color: var(--accent-text); } .x.save { color: var(--accent-text); }
-  .add { display: flex; align-items: center; gap: 8px; padding: 9px 10px 9px 14px; box-shadow: inset 0 .5px 0 var(--line); }
+  .x.copy:hover, .x.save:hover { color: var(--accent-ink); } .x.save { color: var(--accent-ink); }
+  .add { display: flex; align-items: center; gap: 8px; padding: 9px 10px 9px 16px; box-shadow: inset 0 .5px 0 var(--line); }
   .add:first-child { box-shadow: none; }
-  .add input { flex: 1; min-width: 0; height: 28px; padding: 0 10px; border-radius: 7px; font: 13px system-ui; color: var(--fg); background: var(--well); border: 0; outline: 0; }
-  .add input::placeholder { color: var(--fg3); }
+  .add input { flex: 1; min-width: 0; height: 28px; padding: 0 10px; border-radius: 7px; font: 13px system-ui; color: var(--ink); background: var(--fill); border: 0; outline: 0; }
+  .add input::placeholder { color: var(--hint); }
   /* history: the text gets the whole row; time and app sit small above it; actions float over the right end */
-  .hist { position: relative; align-items: flex-start; padding: 10px 14px 11px; }
-  .hist .t small { display: block; color: var(--fg3); font-size: 11px; margin-bottom: 3px; font-variant-numeric: tabular-nums; }
-  .hist .t > span { color: var(--fg); font-size: 13px; line-height: 1.45; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-  .hist details { margin-top: 6px; font-size: 11.5px; color: var(--fg3); } .hist details summary { cursor: pointer; }
-  .hist details span { display: block; margin-top: 3px; color: var(--fg2); white-space: pre-wrap; overflow-wrap: anywhere; }
-  .hist > .x { position: absolute; top: 6px; right: 10px; background: var(--card); box-shadow: -10px 0 10px -2px var(--card); }
+  .hist { position: relative; align-items: flex-start; padding: 11px 16px 12px; }
+  .hist .t small { display: block; color: var(--hint); font-size: 11.5px; margin-bottom: 3px; font-variant-numeric: tabular-nums; }
+  .hist .t > span { color: var(--ink); font-size: 13px; line-height: 1.5; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .hist details { margin-top: 6px; font-size: 12px; color: var(--hint); } .hist details summary { cursor: pointer; }
+  .hist details span { display: block; margin-top: 3px; color: var(--ink-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .hist > .x { position: absolute; top: 7px; right: 10px; background: var(--surface); box-shadow: -10px 0 10px -2px var(--surface); }
   .hist > .x.copy { right: 36px; margin: 0; }
-  .hist:hover > .x { background: var(--hover); box-shadow: -10px 0 10px -2px var(--hover); }
-  .hist > .x:hover { background: linear-gradient(var(--sel), var(--sel)) var(--hover); }
+  .hist:hover > .x { background: color-mix(in oklab, var(--surface) 95%, var(--ink)); box-shadow: -10px 0 10px -2px color-mix(in oklab, var(--surface) 95%, var(--ink)); }
+  .hist:hover { background: color-mix(in oklab, var(--surface) 95%, var(--ink)); }
   #dictationwords > .row:first-child { box-shadow: inset 0 .5px 0 var(--line); }
   #dictationwords .field { text-align: left; }
   #dictationhistory { max-height: 440px; overflow-y: auto; }
   #dictationsearch { margin-bottom: 8px; } #dictationhistory + .group { margin-top: 12px; }
-  h3 #dictationclear { color: var(--fg3); } h3 #dictationclear:hover { color: var(--danger); } h3 .all:disabled { visibility: hidden; }
-  .field:focus, .add input:focus { box-shadow: 0 0 0 3px rgba(47,210,122,.35); border-radius: 4px; }
-  .app:hover, .seg button:not(.on):hover { background: var(--sel); }
-  .empty { padding: 14px; color: var(--fg3); }
-  .field { flex: 1; font: 13px system-ui; color: var(--fg); background: transparent; border: 0; outline: 0; text-align: right; min-width: 0; }
-  .field::placeholder, textarea::placeholder { color: var(--fg3); }
+  h3 #dictationclear { color: var(--hint); } h3 #dictationclear:hover { color: var(--danger); } h3 .all:disabled { visibility: hidden; }
+  .field:focus, .add input:focus { box-shadow: var(--ring); border-radius: 7px; }
+  .app:hover, .seg:not(.cards) button:not(.on):hover { background: var(--fill); }
+  .empty { padding: 14px 16px; color: var(--hint); }
+  .field { flex: 1; font: 13px system-ui; color: var(--ink); background: transparent; border: 0; outline: 0; text-align: right; min-width: 0; -webkit-user-select: text; transition: box-shadow .16s var(--ease); }
+  .field::placeholder, textarea::placeholder { color: var(--hint); }
   textarea.field { text-align: left; resize: none; height: 56px; line-height: 1.4; padding: 0; font: 13px system-ui; }
-  .count { color: var(--fg3); font-size: 11px; font-variant-numeric: tabular-nums; flex: none; }
-  .profile-head { display:flex;align-items:center;justify-content:space-between;gap:12px;margin:30px 2px 9px; }
-  .profile-head h3 { margin:0; }
-  .profile-category { overflow:hidden; }
-  .profile-category + .profile-category { box-shadow:inset 0 .5px 0 var(--line); }
-  .profile-category summary { list-style:none;display:flex;align-items:center;gap:10px;min-height:44px;padding:0 14px;cursor:pointer; }
-  .profile-category summary::-webkit-details-marker { display:none; }
-  .profile-category summary::before { content:"›";color:var(--fg3);font-size:18px;transition:transform .15s var(--ease); }
-  .profile-category[open] summary::before { transform:rotate(90deg); }
-  .profile-category summary:focus-visible { outline:2px solid var(--accent);outline-offset:-2px; }
-  .profile-category summary b { flex:1;font-weight:500; }
-  .profile-category summary span { color:var(--fg3);font-size:11.5px;font-variant-numeric:tabular-nums; }
-  .profile-fact { gap:8px;padding-left:38px; }
-  .profile-fact .field { text-align:left; }
-  .source-pill { color:var(--fg2);background:var(--sel);border-radius:9px;padding:2px 7px;font-size:10.5px;white-space:nowrap; }
-  .profile-add { margin-left:24px; }
-  .profile-sources { display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 4px 0; }
-  #profileStatus { color:var(--fg3);font-size:11.5px;line-height:1.4; } #profileStatus:not(:empty) { margin-top:6px; } #profileStatus .btn { margin:6px 0 0;display:inline-flex;align-items:center; }
+  .count { color: var(--hint); font-size: 11.5px; font-variant-numeric: tabular-nums; flex: none; }
+  .profile-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 28px 4px 8px; }
+  .profile-head h3 { margin: 0; }
+  .profile-category { overflow: hidden; }
+  .profile-category + .profile-category { box-shadow: inset 0 .5px 0 var(--line); }
+  .profile-category summary { list-style: none; display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 0 16px; cursor: pointer; transition: background-color .15s var(--ease); }
+  .profile-category summary:hover { background: var(--fill); }
+  .profile-category summary::-webkit-details-marker { display: none; }
+  .profile-category summary::before { content: ""; width: 6px; height: 6px; margin: 0 4px 0 1px; border: solid var(--hint); border-width: 0 1.5px 1.5px 0; transform: rotate(-45deg); transition: transform .22s var(--ease-out); }
+  .profile-category[open] summary::before { transform: rotate(45deg); }
+  .profile-category[open] > :not(summary) { animation: enter .22s var(--ease-out); }
+  .profile-category summary:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
+  .profile-category summary b { flex: 1; font-weight: 500; }
+  .profile-category summary span { color: var(--hint); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .profile-fact { gap: 8px; padding-left: 38px; }
+  .profile-fact .field { text-align: left; }
+  .source-pill { color: var(--ink-2); background: var(--fill); border-radius: 9px; padding: 2px 8px; font-size: 11px; white-space: nowrap; }
+  .profile-add { margin-left: 22px; }
+  .profile-sources { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 10px 4px 0; }
+  #profileStatus { color: var(--hint); font-size: 12px; line-height: 1.4; } #profileStatus:not(:empty) { margin-top: 6px; } #profileStatus .btn { margin: 6px 0 0; }
 
-  .status { display: flex; align-items: center; gap: 8px; }
-  .dot { width: 8px; height: 8px; border-radius: 4px; background: var(--green); flex: none; }
-  .dot.bad { background: #ff9f0a; }
+  .status { display: flex; align-items: center; gap: 7px; }
+  .dot { width: 7px; height: 7px; border-radius: 4px; background: var(--accent); flex: none; }
+  .dot.bad { background: var(--sun); }
   .wacts { display: flex; gap: 8px; flex: none; } #wtext.wait { animation: blink 1.4s ease-in-out infinite; }
 
   [hidden] { display: none !important; }   /* .btn's all: unset would undo it */
 
   /* apps */
   .appbar { display: flex; gap: 8px; margin-bottom: 4px; position: sticky; top: -40px; padding: 8px 0; z-index: 1; background: var(--bg); }
-  .search { flex: 1; height: 28px; padding: 0 10px; border: 0; border-radius: 7px; font: 13px system-ui; color: var(--fg); outline: 0;
-    background: var(--ctl); box-shadow: inset 0 0 0 .5px var(--line), 0 1px 1px rgba(0,0,0,.05); }
-  .search:focus { box-shadow: inset 0 0 0 .5px var(--line), 0 0 0 3px rgba(47,210,122,.35); }
-  .appbar .btn { height: 28px; } .appbar .seg { align-self: center; }
-  .btn.stop { background: #ff453a; color: #fff; } .btn:disabled { opacity: .45; pointer-events: none; }
-  h3 .all { all: unset; float: right; color: var(--accent-text); text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 11.5px; cursor: pointer; }
-  .app { min-height: 46px; cursor: pointer; } .app img { width: 30px; height: 30px; flex: none; }
+  .appbar .btn { height: 32px; } .appbar .seg { align-self: center; }
+  .btn.stop { background: var(--danger); color: #fff; } .btn:disabled { opacity: .45; pointer-events: none; }
+  h3 .all { all: unset; float: right; color: var(--accent-ink); font-weight: 500; font-size: 12px; cursor: pointer; }
+  .app { min-height: 48px; cursor: pointer; } .app img { width: 30px; height: 30px; flex: none; }
   .app .t b { font-weight: 400; }
   .ck { appearance: none; margin: 0; width: 20px; height: 20px; border-radius: 50%; flex: none; cursor: pointer;
-    box-shadow: inset 0 0 0 1.5px var(--track); transition: background .15s, box-shadow .15s; }
-  .ck:checked { background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 10.5l3 3 6-7' fill='none' stroke='%230B1F17' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/20px; box-shadow: none; }
-  .ck:focus-visible { outline: 3px solid rgba(47,210,122,.45); outline-offset: 2px; }
-  .pill { font-size: 11.5px; font-weight: 500; padding: 3px 9px; border-radius: 10px; flex: none; }
-  .pill.ok { color: var(--ok-text); background: rgba(52,199,89,.13); }
-  .pill.no { color: var(--warn); background: rgba(255,159,10,.14); cursor: pointer; }
-  .pill.wait { color: var(--fg2); background: var(--sel); animation: blink 1.2s ease-in-out infinite; }
-  p.note { color: var(--fg3); font-size: 11.5px; line-height: 1.45; margin: 9px 2px 0; }
-  p.note a { color: var(--accent-text); cursor: pointer; }
+    box-shadow: inset 0 0 0 1.5px var(--track); transition: background-color .15s var(--ease), box-shadow .15s var(--ease), transform .25s var(--spring); }
+  .ck:checked { background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 10.5l3 3 6-7' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/20px; box-shadow: none; }
+  .ck:active { transform: scale(.9); }
+  .ck:focus-visible { outline: none; box-shadow: var(--ring); }
+  .pill { font-size: 12px; font-weight: 500; padding: 3px 9px; border-radius: 10px; flex: none; }
+  .pill.ok { color: var(--ok-text); background: var(--accent-soft); }
+  .pill.no { color: var(--warn); background: color-mix(in oklab, var(--warn) 12%, transparent); cursor: pointer; }
+  .pill.wait { color: var(--ink-2); background: var(--fill); animation: blink 1.2s ease-in-out infinite; }
+  p.note { color: var(--hint); font-size: 12px; line-height: 1.5; margin: 10px 4px 0; }
+  p.note a { color: var(--accent-ink); cursor: pointer; }
 
-  .about { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 10px 0 6px; }
-  .about .mark { width: 92px; height: 92px; margin-bottom: 10px; filter: drop-shadow(0 8px 18px rgba(14,159,90,.3)); }
-  #about.on .about .mark { animation: bloom .9s var(--spring) both; }
-  @keyframes bloom { from { transform: scale(.4) rotate(-40deg); opacity: 0; } }
-  .about h1 { margin: 0; } .about p { color: var(--fg2); margin: 4px 0 0; }
-  .about .by { font-size: 12px; color: var(--fg3); margin-top: 2px; }
-  .about .by b { color: var(--accent-text); font-weight: 600; }
-  .made { text-align: center; color: var(--fg3); font-size: 11.5px; margin: 22px 0 4px; }
-  .made .heart { display: inline-block; animation: beat 2.4s var(--ease) infinite; }
-  @keyframes beat { 0%, 30%, 100% { transform: none; } 10% { transform: scale(1.18); } 20% { transform: scale(.96); } }
-  #feedbacktext { display:block;width:100%;box-sizing:border-box;resize:vertical;font:13px/1.5 system-ui;color:var(--fg);background:transparent;border:0;padding:14px;margin:14px 0 0;outline:none; }
-  #feedbackbody { white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.6 system-ui;color:var(--fg2);padding:14px;margin:14px 0;-webkit-user-select:text; }
-  .meeting-prep { margin:0 0 6px; } .meeting-prep .row { gap:8px; } .meeting-prep .t { margin-right:6px; }
-  .meeting-controls { margin:0; }
-  .meeting-controls summary { color:var(--fg2);cursor:pointer;padding:10px 2px;font-weight:500;list-style:none;display:flex;align-items:center;gap:8px; }
-  .meeting-controls summary::-webkit-details-marker { display:none; }
-  .meeting-controls summary::before { content:"›";color:var(--fg3);font-size:17px;line-height:1;transition:transform .15s var(--ease); }
-  .meeting-controls[open] summary::before { transform:rotate(90deg); }
-  .meeting-controls summary:focus-visible { outline:2px solid var(--accent);border-radius:5px; }
-  #dictation .field { text-align:left; }
+  .about { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 18px 0 6px; }
+  .about .mark { width: 76px; height: 76px; margin-bottom: 14px; }
+  #about.on .about .mark { animation: bloom .7s var(--spring) both; }
+  @keyframes bloom { from { transform: scale(.82) rotate(-18deg); opacity: 0; } }
+  .about h1 { margin: 0; font-size: 26px; } .about p { color: var(--ink-2); margin: 4px 0 0; }
+  .about .by { font-size: 12.5px; color: var(--ink-2); margin-top: 2px; }
+  .about .by b { color: var(--ink); font-weight: 600; }
+  #aboutver { font-size: 12px; color: var(--hint); font-variant-numeric: tabular-nums; }
+  .made { display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--hint); font-size: 12px; margin: 26px 0 4px; }
+  .made svg { width: 14px; height: 14px; }
+  #feedbacktext { display: block; width: 100%; box-sizing: border-box; resize: vertical; font: 13px/1.5 system-ui; color: var(--ink); background: var(--surface); border: 0; padding: 14px 16px; margin: 14px 0 0; outline: none; -webkit-user-select: text; transition: box-shadow .16s var(--ease); }
+  #feedbacktext:focus { box-shadow: 0 0 0 .5px var(--line), var(--ring); }
+  #feedbackbody { white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.6 ui-monospace, Menlo, monospace; color: var(--ink-2); padding: 14px 16px; margin: 14px 0; -webkit-user-select: text; }
+  .meeting-prep { margin: 0 0 6px; } .meeting-prep .row { gap: 8px; } .meeting-prep .t { margin-right: 6px; }
+  .meeting-controls { margin: 0; }
+  .meeting-controls summary { color: var(--ink-2); cursor: pointer; padding: 10px 4px; font-weight: 500; list-style: none; display: flex; align-items: center; gap: 9px; }
+  .meeting-controls summary::-webkit-details-marker { display: none; }
+  .meeting-controls summary::before { content: ""; width: 6px; height: 6px; border: solid var(--hint); border-width: 0 1.5px 1.5px 0; transform: rotate(-45deg); transition: transform .22s var(--ease-out); }
+  .meeting-controls[open] summary::before { transform: rotate(45deg); }
+  .meeting-controls[open] .group { animation: enter .22s var(--ease-out); }
+  .meeting-controls summary:focus-visible { outline: none; box-shadow: var(--ring); border-radius: 6px; }
+  #dictation .field { text-align: left; }
 </style></head><body>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
-  <linearGradient id="hyleaf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8BF5C8"/><stop offset=".5" stop-color="#2FD27A"/><stop offset="1" stop-color="#0E9F5A"/></linearGradient>
+  <linearGradient id="hyleaf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5DBB8A"/><stop offset="1" stop-color="#2E9E6A"/></linearGradient>
   <symbol id="clover" viewBox="-24 -24 48 48">   <!-- Hackyard's four-leaf clover: four heart leaves, a stem, a petal-pink heart -->
-    <path d="M2 4Q8 13 5 22" fill="none" stroke="#0E9F5A" stroke-width="2.8" stroke-linecap="round"/>
+    <path d="M2 4Q8 13 5 22" fill="none" stroke="#237A52" stroke-width="2.8" stroke-linecap="round"/>
     <g fill="url(#hyleaf)"><path id="leaf" transform="rotate(-45)" d="M0-1.5C-3-6-12.5-7.5-11.5-14.5C-10.5-21-3-21.5 0-16.5C3-21.5 10.5-21 11.5-14.5C12.5-7.5 3-6 0-1.5Z"/>
       <use href="#leaf" transform="rotate(90)"/><use href="#leaf" transform="rotate(180)"/><use href="#leaf" transform="rotate(270)"/></g>
-    <circle r="2.8" fill="#FF7EB6"/>
+    <circle r="2.8" fill="#F2A7B8"/>
   </symbol></defs></svg>
 <nav>
   <div class="me"><svg class="mark" viewBox="0 0 48 48" aria-hidden="true"><use href="#clover" width="48" height="48"/></svg><div><b>Clover</b><span>by <em>Hackyard</em></span></div></div>
-  <button id="agentsnav" aria-label="Open Agents"><i class="ni" style="background:#30b0c7"><svg viewBox="0 0 24 24"><rect x="4" y="8" width="13" height="12" rx="2.5"/><path d="M8 4.5h9.5A2.5 2.5 0 0 1 20 7v9"/></svg></i>Agents<span class="count" id="agentcount"></span></button>
-  <button data-s="dictation" id="dictationnav"><i class="ni" style="background:#ff375f"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M6 11v1a6 6 0 0 0 12 0v-1M12 18v3M8 21h8"/></svg></i>Dictation</button>
-  <button data-s="general" class="on" aria-current="page"><i class="ni" style="background:#8e8e93"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></i>General</button>
-  <button data-s="brain"><i class="ni" style="background:#d97757"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/></svg></i>Intelligence</button>
-  <button data-s="memory"><i class="ni" style="background:#ff9f0a"><svg viewBox="0 0 24 24"><path d="M6 4h12v16l-6-4-6 4z"/></svg></i>Memory</button>
-  <button data-s="meetings"><i class="ni" style="background:#5e5ce6"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16M8 14h3M8 17h7"/></svg></i>Meetings</button>
-  <button data-s="usage"><i class="ni" style="background:#30d158"><svg viewBox="0 0 24 24"><path d="M5 19V11M12 19V5M19 19v-6"/></svg></i>Usage</button>
-  <button data-s="account"><i class="ni" style="background:#0a84ff"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></i>Account &amp; Access</button>
-  <button data-s="about"><i class="ni" style="background:#bf5af2"><svg viewBox="0 0 24 24"><path d="M12 4v10M8 10l4 4 4-4M5 19h14"/></svg></i>About &amp; Updates</button>
+  <button id="agentsnav" aria-label="Open Agents"><i class="ni" style="background:#CFE3E6"><svg viewBox="0 0 24 24"><rect x="4" y="8" width="13" height="12" rx="2.5"/><path d="M8 4.5h9.5A2.5 2.5 0 0 1 20 7v9"/></svg></i>Agents<span class="count" id="agentcount"></span></button>
+  <button data-s="dictation" id="dictationnav"><i class="ni" style="background:#F3CFC6"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M6 11v1a6 6 0 0 0 12 0v-1M12 18v3M8 21h8"/></svg></i>Dictation</button>
+  <button data-s="general" class="on" aria-current="page"><i class="ni" style="background:#DDD7CC"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></i>General</button>
+  <button data-s="brain"><i class="ni" style="background:#CFE0C3"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/></svg></i>Intelligence</button>
+  <button data-s="memory"><i class="ni" style="background:#F4DFAE"><svg viewBox="0 0 24 24"><path d="M6 4h12v16l-6-4-6 4z"/></svg></i>Memory</button>
+  <button data-s="meetings"><i class="ni" style="background:#DAD7EE"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16M8 14h3M8 17h7"/></svg></i>Meetings</button>
+  <button data-s="usage"><i class="ni" style="background:#C8E3D3"><svg viewBox="0 0 24 24"><path d="M5 19V11M12 19V5M19 19v-6"/></svg></i>Usage</button>
+  <button data-s="account"><i class="ni" style="background:#CFDDEC"><svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></i>Account &amp; Access</button>
+  <button data-s="about"><i class="ni" style="background:#ECD5E3"><svg viewBox="0 0 24 24"><path d="M12 4v10M8 10l4 4 4-4M5 19h14"/></svg></i>About &amp; Updates</button>
   <div class="spacer"></div>
   <button data-s="feedback" id="feedbacknav">Report feedback<svg class="out" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 16 16 8M9.5 8H16v6.5"/></svg></button>
   <div class="ver" id="ver"></div>
@@ -420,43 +482,26 @@
     <p class="lede" id="brainlede">Clover thinks with Claude, on your Claude plan.</p>
     <h3>AI provider</h3>
     <div class="seg cards" data-k="client" aria-label="AI provider">
-      <button data-v="claude"><i class="ni" style="background:#d97757" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/></svg></i><b>Claude Code</b><small>Your Claude plan</small></button>
-      <button data-v="direct"><i class="ni" style="background:#2fd27a" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="8" cy="12" r="3.5"/><path d="M11.5 12H21M17.5 12v3.5M20.5 12v2.5"/></svg></i><b>API key</b><small>Bring your own</small></button>
-      <button data-v="devin"><i class="ni" style="background:#5e5ce6" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg></i><b>Devin</b><small>Your Devin plan</small></button>
-      <button data-v="pi"><i class="ni" style="background:#636366" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 7h14M9 7v11M15 7v8a3 3 0 0 0 3 3"/></svg></i><b>Pi</b><small>Local models too</small></button>
+      <button data-v="claude"><i class="ni" style="background:#CFE0C3" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4"/></svg></i><b>Claude Code</b><small>Your Claude plan</small></button>
+      <button data-v="antigravity"><i class="ni" style="background:#CFDDEC" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3.5 4.5 20h3.2L12 10.4 16.3 20h3.2z"/></svg></i><b>Antigravity</b><small>Your Google sign-in</small></button>
+      <button data-v="direct"><i class="ni" style="background:#F4DFAE" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="8" cy="12" r="3.5"/><path d="M11.5 12H21M17.5 12v3.5M20.5 12v2.5"/></svg></i><b>API key</b><small>Pay as you go</small></button>
     </div>
     <p class="note" id="clientwhy"></p>
-    <div id="direct" hidden>
-      <h3>API key</h3>
+    <div id="agy" hidden>
+      <h3>Antigravity</h3>
       <div class="group">
-        <div class="row"><div class="t"><b>Provider</b><span id="provwhy"></span></div><div class="seg" data-k="provider"><button data-v="anthropic">Claude API</button><button data-v="openai">OpenAI</button><button data-v="azure">Azure</button><button data-v="custom">Custom</button></div></div>
-        <div data-pv="anthropic">
-          <div class="row key"><div class="t"><b>API key</b><span>Only on this Mac, in ~/.config/clover/settings.json. <i class="info" title="An owner-only file (0600). The key goes only to Anthropic.">i</i></span></div><input class="field pf" data-k="anthropicKey" type="password" placeholder="sk-ant-…" spellcheck="false" autocomplete="off" aria-label="Anthropic API key"><button class="x eye" type="button" aria-label="Show key"></button></div>
-          <div class="row"><div class="t"><b>Fast model</b><span>For quick asks.</span></div><input class="field pf" data-k="anthropicModel" list="provmodels" spellcheck="false" aria-label="Anthropic fast model"></div>
-          <div class="row"><div class="t"><b>Work model</b><span>For real work and agents.</span></div><input class="field pf" data-k="anthropicWorkModel" list="provmodels" spellcheck="false" aria-label="Anthropic work model"></div>
-        </div>
-        <div data-pv="openai">
-          <div class="row key"><div class="t"><b>API key</b><span>Only on this Mac, in ~/.config/clover/settings.json. <i class="info" title="An owner-only file (0600). The key goes only to OpenAI.">i</i></span></div><input class="field pf" data-k="openaiKey" type="password" placeholder="sk-…" spellcheck="false" autocomplete="off" aria-label="OpenAI API key"><button class="x eye" type="button" aria-label="Show key"></button></div>
-          <div class="row"><div class="t"><b>Base URL</b><span>Change it for a proxy.</span></div><input class="field pf" data-k="openaiBase" spellcheck="false" aria-label="OpenAI base URL"></div>
-          <div class="row"><div class="t"><b>Fast model</b><span>For quick asks.</span></div><input class="field pf" data-k="openaiModel" list="provmodels" spellcheck="false" aria-label="OpenAI fast model"></div>
-          <div class="row"><div class="t"><b>Work model</b><span>For real work and agents.</span></div><input class="field pf" data-k="openaiWorkModel" list="provmodels" spellcheck="false" aria-label="OpenAI work model"></div>
-        </div>
-        <div data-pv="azure">
-          <div class="row"><div class="t"><b>Endpoint</b><span>Your Azure OpenAI resource.</span></div><input class="field pf" data-k="azureEndpoint" placeholder="https://my-res.openai.azure.com" spellcheck="false" aria-label="Azure endpoint"></div>
-          <div class="row key"><div class="t"><b>API key</b><span>Only on this Mac, in ~/.config/clover/settings.json. <i class="info" title="An owner-only file (0600). The key goes only to your Azure resource.">i</i></span></div><input class="field pf" data-k="azureKey" type="password" placeholder="Key 1 or Key 2" spellcheck="false" autocomplete="off" aria-label="Azure API key"><button class="x eye" type="button" aria-label="Show key"></button></div>
-          <div class="row"><div class="t"><b>Deployment</b><span>For quick asks.</span></div><input class="field pf" data-k="azureDeployment" list="provmodels" placeholder="gpt-5-mini" spellcheck="false" aria-label="Azure deployment"></div>
-          <div class="row"><div class="t"><b>Work deployment</b><span>Optional. For real work and agents.</span></div><input class="field pf" data-k="azureWorkDeployment" list="provmodels" placeholder="Same as above" spellcheck="false" aria-label="Azure work deployment"></div>
-          <div class="row"><div class="t"><b>API version</b><span>Use v1 for the Azure AI Foundry v1 API.</span></div><input class="field pf" data-k="azureApiVersion" spellcheck="false" aria-label="Azure API version"></div>
-        </div>
-        <div data-pv="custom">
-          <div class="row"><div class="t"><b>Base URL</b><span>Ollama, OpenRouter, LM Studio or any endpoint.</span></div><input class="field pf" data-k="customBase" placeholder="http://localhost:11434/v1" spellcheck="false" aria-label="Custom base URL"></div>
-          <div class="row"><div class="t"><b>Speaks</b><span>The API style the endpoint understands.</span></div><div class="seg" data-k="customFormat"><button data-v="openai">OpenAI-compatible</button><button data-v="anthropic">Anthropic Messages</button></div></div>
-          <div class="row key"><div class="t"><b>API key</b><span>Optional. Only on this Mac, in ~/.config/clover/settings.json. <i class="info" title="An owner-only file (0600). The key goes only to your endpoint.">i</i></span></div><input class="field pf" data-k="customKey" type="password" placeholder="Not needed for local servers" spellcheck="false" autocomplete="off" aria-label="Custom API key"><button class="x eye" type="button" aria-label="Show key"></button></div>
-          <div class="row"><div class="t"><b>Model</b><span>For quick asks.</span></div><input class="field pf" data-k="customModel" list="provmodels" placeholder="qwen3" spellcheck="false" aria-label="Custom model"></div>
-          <div class="row"><div class="t"><b>Work model</b><span>Optional. For real work and agents.</span></div><input class="field pf" data-k="customWorkModel" list="provmodels" placeholder="Same as above" spellcheck="false" aria-label="Custom work model"></div>
-        </div>
+        <div class="row"><div class="t"><b>Sign in</b><span>Install the Antigravity CLI and sign in once with <code>agy</code>.</span></div></div>
+        <div class="row"><div class="t"><b>Model</b><span>Blank uses Antigravity’s default.</span></div><input class="field" id="agyModel" placeholder="Antigravity’s default" spellcheck="false" aria-label="Antigravity model"></div>
+      </div>
+    </div>
+    <div id="direct" hidden>
+      <h3>Provider</h3>
+      <div class="seg picker" data-k="provider" id="provpicker" aria-label="API provider"></div>
+      <p class="note" id="provwhy"></p>
+      <h3 id="provname">Claude API</h3>
+      <div class="group" id="provfields">
         <datalist id="provmodels"></datalist>
-        <div class="row"><div class="t"><b>Connection</b><span class="status" id="provstatus"><i class="dot" id="provdot" hidden></i><span id="provnote" role="status" aria-live="polite">Not tested yet.</span></span></div><button class="btn" id="provmodelsbtn">Load Models</button><button class="btn blue" id="provtest">Test Connection</button></div>
+        <div class="row" id="provconn"><div class="t"><b>Connection</b><span class="status" id="provstatus"><i class="dot" id="provdot" hidden></i><span id="provnote" role="status" aria-live="polite">Not tested yet.</span></span></div><button class="btn" id="provmodelsbtn">Load Models</button><button class="btn blue" id="provtest">Test Connection</button></div>
       </div>
     </div>
     <div id="claudeonly">
@@ -514,7 +559,7 @@
 
   <section id="apps">
     <button class="btn" id="appsback" onclick="st.tab('account')">← Account &amp; Access</button>
-    <h1><i class="ni" style="background:#ff453a" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/></svg></i>Apps</h1>
+    <h1><i class="ni" style="background:#F1D2CB" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/></svg></i>Apps</h1>
     <p class="lede">Tick the apps Clover can control. Allow them now so it won’t stop to ask.</p>
     <div class="appbar"><div class="seg" id="appview" role="group" aria-label="App list"><button data-v="key" class="on" aria-pressed="true">Key Apps</button><button data-v="all" aria-pressed="false">All Apps</button></div>
       <input id="appq" class="search" placeholder="Search all apps" aria-label="Search all apps"><button class="btn blue" id="allow" disabled>Allow</button></div>
@@ -528,10 +573,18 @@
     <div class="group">
       <div class="row"><div class="t"><b id="planname">Claude</b><span class="status"><i class="dot" id="pdot"></i><span id="ptext">Checking…</span></span></div><button class="btn" data-do="setup" id="pbtn">Set Up</button></div>
     </div>
-    <h3>Safety</h3>
-    <div class="group">
-      <div class="row"><div class="t"><b>Safe mode</b><span id="safenote">Risky actions need approval. Background agents use a scratch folder.</span></div><label class="sw"><input type="checkbox" data-k="safe"></label></div>
+    <h3 id="permlabel">Safety</h3>
+    <div class="group modes" id="permmode" role="radiogroup" aria-labelledby="permlabel">
+      <button class="mode" role="radio" data-v="ask"><i class="radio"></i><div><b>Ask first</b><span>Deletes, sends, purchases and file changes show an Allow card.</span></div></button>
+      <button class="mode" role="radio" data-v="auto"><i class="radio"></i><div><b>Auto</b><span>Clover acts on its own and only asks before deleting or buying.</span></div></button>
+      <button class="mode" role="radio" data-v="bypass"><i class="radio"></i><div><b>Bypass permissions</b><span>Never asks. Still always refuses rm, sudo, disk tools and shutdown.</span></div></button>
     </div>
+    <div id="bypassconfirm" role="alertdialog" aria-labelledby="bypasstitle" aria-describedby="bypasstext" hidden>
+      <b id="bypasstitle"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4 2.8 20h18.4z"/><path d="M12 10v4.5M12 17.4v.1"/></svg>Let Clover act without asking?</b>
+      <p id="bypasstext">Clover will delete, send and buy without an Allow card. It still always refuses rm, sudo, disk tools and shutdown. You can switch back anytime.</p>
+      <div class="acts"><button class="btn" id="bypasscancel">Cancel</button><button class="btn warn" id="bypassok">Bypass Permissions</button></div>
+    </div>
+    <p class="note" id="safenote">Background agents work in a scratch folder.</p>
     <h3>Privacy</h3>
     <div class="group">
       <div class="row"><div class="t"><b>Look at my screen</b><span>Only when you mean it, like “this”. <i class="info" title="The picture goes with that one ask.">i</i></span></div><div class="seg" data-k="screen"><button data-v="auto">Automatic</button><button data-v="never">Never</button></div></div>
@@ -564,7 +617,7 @@
       <details class="meeting-controls"><summary>Meeting Copilot settings</summary><div class="group">
       <div class="row"><div class="t"><b>Meeting Copilot</b><span>The call and your mic, in a private panel. <i class="info" title="On supported calls, listening ends two seconds after the app releases the mic.">i</i></span></div><label class="sw"><input type="checkbox" data-k="meeting" aria-label="Meeting Copilot"></label></div>
       <div class="row"><div class="t"><b>Save meeting transcripts</b><span>On this Mac. <i class="info" title="Transcripts, notes and answers. At the end, choose Save or Don’t save. Turning off offers to keep or delete past meetings.">i</i></span></div><label class="sw"><input type="checkbox" data-k="meetingSave" aria-label="Save meeting transcripts"></label></div>
-      <div class="row"><div class="t"><b>AI meeting summaries</b><span>Claude reads the transcript once. <i class="info" title="For a recap and action items. With Devin or Pi, meetings stay on this Mac. Off: a local recap, and prep won’t search connected email or documents.">i</i></span></div><label class="sw"><input type="checkbox" data-k="meetingSummary" aria-label="AI meeting summaries"></label></div>
+      <div class="row"><div class="t"><b>AI meeting summaries</b><span>Claude reads the transcript once. <i class="info" title="For a recap and action items, with Claude Code. Other providers keep meetings on this Mac. Off: a local recap, and prep won’t search connected email or documents.">i</i></span></div><label class="sw"><input type="checkbox" data-k="meetingSummary" aria-label="AI meeting summaries"></label></div>
       <div class="row"><div class="t"><b>Prep in a Claude chat</b><span>Copies a prompt for call notes.</span></div><button class="btn" data-do="meetingPrepPrompt" id="meetingPrepPrompt">Copy Prompt</button></div>
       </div>
       </details>
@@ -594,19 +647,19 @@
     </div>
     <h3>Hackyard</h3>
     <div class="group">
-      <div class="row"><div class="t"><b>Star Clover on GitHub</b><span>It helps more people find it.</span></div><button class="btn blue" data-do="cheer">★ Star</button></div>
+      <div class="row"><div class="t"><b>Star Clover on GitHub</b><span>It helps more people find it.</span></div><button class="btn blue" data-do="cheer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"/></svg>Star</button></div>
       <div class="row"><div class="t"><b>Source code</b><span>github.com/joinhackyard/clover</span></div><button class="btn" data-do="github">Open</button></div>
       <div class="row"><div class="t"><b>Star reminders</b><span>Now and then, a little nudge under an answer.</span></div><label class="sw"><input type="checkbox" data-k="support"></label></div>
       <div class="row"><div class="t"><b>Ideas when I’m away</b><span>Now and then, a short idea if you haven’t used Clover.</span></div><label class="sw"><input type="checkbox" data-k="comeBack"></label></div>
     </div>
-    <p class="made">Made with <span class="heart">💚</span> by Hackyard · hackyard.org</p>
+    <p class="made"><svg viewBox="0 0 48 48" aria-hidden="true"><use href="#clover" width="48" height="48"/></svg>Made in the open by Hackyard · hackyard.org</p>
   </section>
   <section id="feedback">
     <h1>Report feedback</h1><p class="lede">Something off? You see exactly what gets sent.</p>
     <div class="group"><div class="row"><div class="t"><b>Include my last ask</b><span>It may contain private details.</span></div><label class="sw"><input id="feedbackinclude" type="checkbox" aria-label="Include my last ask"></label></div></div>
     <textarea id="feedbacktext" class="group" rows="5" maxlength="4000" placeholder="What happened? What did you expect?" aria-label="Your feedback"></textarea>
     <pre id="feedbackbody" class="group" aria-live="polite">Preparing preview…</pre>
-    <button class="btn blue" id="feedbackopen" disabled>Open GitHub issue ↗</button>
+    <button class="btn blue" id="feedbackopen" disabled>Open GitHub Issue</button>
     <p class="note">Only the text above goes in. Nothing is sent until you submit on GitHub.</p>
   </section>
 </main>
@@ -617,6 +670,37 @@
   const esc = t => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));   // for text put into innerHTML
   const post = m => window.webkit?.messageHandlers.st.postMessage(m);
   let P = {};
+  // Each provider: name, picker line, monogram tint, why, and its fields [key, label, hint, kind, placeholder]. kind: key · url · model · text · format
+  const KEYHINT = 'Only on this Mac, in ~/.config/clover/settings.json.';
+  const PROV = {
+    anthropic: ['Claude API', 'Anthropic', '#E7D3C3', 'Pay as you go with an Anthropic key.', [['anthropicKey', 'API key', KEYHINT, 'key', 'sk-ant-…'], ['anthropicModel', 'Fast model', 'For quick asks.', 'model'], ['anthropicWorkModel', 'Work model', 'For real work and agents.', 'model']]],
+    openai: ['OpenAI', 'GPT models', '#D6E2DA', 'GPT models with an OpenAI key.', [['openaiKey', 'API key', KEYHINT, 'key', 'sk-…'], ['openaiBase', 'Base URL', 'Change it for a proxy.', 'url'], ['openaiModel', 'Fast model', 'For quick asks.', 'model'], ['openaiWorkModel', 'Work model', 'For real work and agents.', 'model']]],
+    azure: ['Azure OpenAI', 'Your deployments', '#CFDDEC', 'Your own Azure OpenAI deployments.', [['azureEndpoint', 'Endpoint', 'Your Azure OpenAI resource.', 'url', 'https://my-res.openai.azure.com'], ['azureKey', 'API key', KEYHINT, 'key', 'Key 1 or Key 2'], ['azureDeployment', 'Deployment', 'For quick asks.', 'model', 'gpt-5-mini'], ['azureWorkDeployment', 'Work deployment', 'Optional. For real work and agents.', 'model', 'Same as above'], ['azureApiVersion', 'API version', 'Use v1 for Azure AI Foundry.', 'text']]],
+    gemini: ['Google Gemini', 'AI Studio key', '#DCE3F2', 'Gemini models with a Google AI Studio key.', [['geminiKey', 'API key', KEYHINT, 'key', 'AIza…'], ['geminiModel', 'Fast model', 'For quick asks.', 'model'], ['geminiWorkModel', 'Work model', 'For real work and agents.', 'model']]],
+    openrouter: ['OpenRouter', 'Many models', '#E4DCEF', 'Hundreds of models behind one OpenRouter key.', [['openrouterKey', 'API key', KEYHINT, 'key', 'sk-or-…'], ['openrouterModel', 'Fast model', 'For quick asks.', 'model'], ['openrouterWorkModel', 'Work model', 'For real work and agents.', 'model']]],
+    groq: ['Groq', 'Very fast', '#F3D9CF', 'Open models on Groq’s fast chips.', [['groqKey', 'API key', KEYHINT, 'key', 'gsk_…'], ['groqModel', 'Fast model', 'For quick asks.', 'model'], ['groqWorkModel', 'Work model', 'For real work and agents.', 'model']]],
+    mistral: ['Mistral', 'Le Chat models', '#F4E2BE', 'Mistral models with a La Plateforme key.', [['mistralKey', 'API key', KEYHINT, 'key', 'Mistral API key'], ['mistralModel', 'Fast model', 'For quick asks.', 'model'], ['mistralWorkModel', 'Work model', 'For real work and agents.', 'model']]],
+    deepseek: ['DeepSeek', 'Low cost', '#D3E0EA', 'DeepSeek chat and reasoning models.', [['deepseekKey', 'API key', KEYHINT, 'key', 'sk-…'], ['deepseekModel', 'Fast model', 'For quick asks.', 'model'], ['deepseekWorkModel', 'Work model', 'For real work and agents.', 'model']]],
+    xai: ['xAI Grok', 'Grok models', '#DDDAD3', 'Grok models with an xAI key.', [['xaiKey', 'API key', KEYHINT, 'key', 'xai-…'], ['xaiModel', 'Fast model', 'For quick asks.', 'model'], ['xaiWorkModel', 'Work model', 'For real work and agents.', 'model']]],
+    ollama: ['Ollama', 'Local, no key', '#CFE0C3', 'Models running on this Mac. Nothing leaves it.', [['ollamaBase', 'Base URL', 'Where Ollama listens.', 'url'], ['ollamaModel', 'Model', 'For quick asks.', 'model', 'qwen3'], ['ollamaWorkModel', 'Work model', 'Optional. For real work and agents.', 'model', 'Same as above']]],
+    custom: ['Custom endpoint', 'Any API', '#E9E3D8', 'Any OpenAI- or Anthropic-style endpoint.', [['customBase', 'Base URL', 'LM Studio, vLLM or any endpoint.', 'url', 'http://localhost:1234/v1'], ['customFormat', 'Speaks', 'The API style the endpoint understands.', 'format'], ['customKey', 'API key', 'Optional. ' + KEYHINT, 'key', 'Not needed for local servers'], ['customModel', 'Model', 'For quick asks.', 'model', 'qwen3'], ['customWorkModel', 'Work model', 'Optional. For real work and agents.', 'model', 'Same as above']]],
+  };
+  const DEFAULTS = { provider: 'anthropic', anthropicModel: 'claude-haiku-5-5', anthropicWorkModel: 'claude-sonnet-5-5',
+    openaiBase: 'https://api.openai.com/v1', openaiModel: 'gpt-5-mini', openaiWorkModel: 'gpt-5', azureApiVersion: '2024-10-21',
+    geminiModel: 'gemini-3.5-flash', geminiWorkModel: 'gemini-3.1-pro', openrouterModel: 'openrouter/auto', openrouterWorkModel: 'openrouter/auto',
+    groqModel: 'llama-3.3-70b-versatile', groqWorkModel: 'llama-3.3-70b-versatile', mistralModel: 'mistral-small-latest', mistralWorkModel: 'mistral-large-latest',
+    deepseekModel: 'deepseek-chat', deepseekWorkModel: 'deepseek-reasoner', xaiModel: 'grok-4-fast', xaiWorkModel: 'grok-4', ollamaBase: 'http://localhost:11434/v1', customFormat: 'openai' };
+  const PROVIDERS = Object.fromEntries(Object.entries(PROV).map(([k, v]) => [k, v[0]]));
+  const owner = { anthropic: 'Anthropic', openai: 'OpenAI', azure: 'your Azure resource', gemini: 'Google', openrouter: 'OpenRouter', groq: 'Groq', mistral: 'Mistral', deepseek: 'DeepSeek', xai: 'xAI', custom: 'your endpoint' };
+  $('provpicker').innerHTML = Object.entries(PROV).map(([v, [name, sub, tint]]) =>
+    `<button data-v="${v}"><i class="mono" style="--t:${tint}" aria-hidden="true">${name === 'xAI Grok' ? 'x' : name[0]}</i><span><b>${name}</b><small>${sub}</small></span></button>`).join('');
+  $('provconn').insertAdjacentHTML('beforebegin', Object.entries(PROV).map(([v, [name, , , , fields]]) => `<div data-pv="${v}" hidden>` + fields.map(([k, label, hint, kind, ph]) => {
+    const keyNote = kind === 'key' ? ` <i class="info" title="An owner-only file (0600). The key goes only to ${owner[v]}.">i</i>` : '';
+    const t = `<div class="t"><b>${label}</b><span>${esc(hint)}${keyNote}</span></div>`, aria = `${name} ${label.toLowerCase()}`;
+    if (kind === 'format') return `<div class="row">${t}<div class="seg" data-k="${k}"><button data-v="openai">OpenAI-compatible</button><button data-v="anthropic">Anthropic</button></div></div>`;
+    const input = `<input class="field pf" data-k="${k}"${kind === 'key' ? ' type="password" autocomplete="off"' : ''}${kind === 'model' ? ' list="provmodels"' : ''}${ph ? ` placeholder="${esc(ph)}"` : ''} spellcheck="false" aria-label="${esc(aria)}">`;
+    return `<div class="row${kind === 'key' ? ' key' : ''}">${t}${input}${kind === 'key' ? '<button class="x eye" type="button" aria-label="Show key"></button>' : ''}</div>`;
+  }).join('') + '</div>').join(''));
   let hotkeyTaken = false, dictateHotkeyTaken = false;   // another app owns a saved shortcut, so it does nothing
   const shortcutHint = () => hotkeyTaken ? 'Another app uses this shortcut. Change it to use Clover.' : P.input === 'type' ? 'Press to type. Return sends.' : P.talkMode === 'toggle' ? 'Press to listen. Press again to send.' : 'Hold it, talk, let go.';
   const set = (k, v) => { P[k] = v; post({ do: 'set', k, v }); paint(); };
@@ -769,11 +853,6 @@
   }
 
   // Intelligence → API key: one provider at a time, each with its own fields. Empty model fields mean the default shown.
-  const DEFAULTS = { provider: 'anthropic', anthropicModel: 'claude-haiku-5-5', anthropicWorkModel: 'claude-sonnet-5-5',
-    openaiBase: 'https://api.openai.com/v1', openaiModel: 'gpt-5-mini', openaiWorkModel: 'gpt-5', azureApiVersion: '2024-10-21', customFormat: 'openai' };
-  const PROVIDERS = { anthropic: 'the Claude API', openai: 'OpenAI', azure: 'Azure OpenAI', custom: 'your endpoint' };
-  const PROVWHY = { anthropic: 'Pay as you go with an Anthropic key.', openai: 'GPT models with an OpenAI key.',
-    azure: 'Your own Azure OpenAI deployments.', custom: 'Any OpenAI- or Anthropic-style endpoint.' };
   const providerFields = () => [...document.querySelectorAll('.pf')];
   providerFields().forEach(e => {
     e.onchange = () => { set(e.dataset.k, e.value.trim()); provNote('Not tested yet.'); };
@@ -794,15 +873,36 @@
   });
   $('provtest').onclick = () => { flushField(); provNote('Testing…', 'wait'); $('provtest').disabled = true; post({ do: 'providerTest' }); };
   $('provmodelsbtn').onclick = () => { flushField(); provNote('Looking for models…', 'wait'); $('provmodelsbtn').disabled = true; post({ do: 'providerModels' }); };
+  $('agyModel').onchange = () => set('agyModel', $('agyModel').value.trim());
+  $('agyModel').onkeydown = ev => { if (ev.key === 'Enter') $('agyModel').blur(); };
   let paintedProvider = null;
   function paintProvider() {
-    const prov = PROVIDERS[P.provider] ? P.provider : 'anthropic';
+    const prov = PROV[P.provider] ? P.provider : 'anthropic';
     if (paintedProvider && paintedProvider !== prov) { $('provmodels').replaceChildren(); provNote('Not tested yet.'); }   // another provider's answers don't apply
     paintedProvider = prov;
     document.querySelectorAll('[data-pv]').forEach(g => g.hidden = g.dataset.pv !== prov);
-    $('provwhy').textContent = PROVWHY[prov];
+    $('provwhy').textContent = PROV[prov][3]; $('provname').textContent = PROV[prov][0];
     providerFields().forEach(e => { if (document.activeElement !== e) e.value = P[e.dataset.k] || DEFAULTS[e.dataset.k] || ''; });
   }
+
+  // Account → Safety: Ask first · Auto · Bypass permissions. Bypass asks once, inline, before it saves.
+  const MODES = ['ask', 'auto', 'bypass'];
+  const permissionMode = () => MODES.includes(P.permissionMode) ? P.permissionMode : P.safe === false ? 'bypass' : 'ask';
+  function paintModes() {
+    const mode = permissionMode(), asking = !$('bypassconfirm').hidden;
+    document.querySelectorAll('#permmode .mode').forEach(b => { const on = b.dataset.v === (asking ? 'bypass' : mode); b.setAttribute('aria-checked', String(on)); b.tabIndex = on ? 0 : -1; });
+  }
+  const confirmBypass = open => { $('bypassconfirm').hidden = !open; paintModes(); if (open) $('bypasscancel').focus(); };
+  document.querySelectorAll('#permmode .mode').forEach(b => b.onclick = () => {
+    if (b.dataset.v === 'bypass' && permissionMode() !== 'bypass') return confirmBypass(true);
+    confirmBypass(false); set('permissionMode', b.dataset.v);
+  });
+  $('permmode').onkeydown = e => {   // arrows move between the three, like a radio group
+    const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key]; if (!step) return;
+    e.preventDefault(); const i = (MODES.indexOf(permissionMode()) + step + 3) % 3; document.querySelectorAll('#permmode .mode')[i].focus();
+  };
+  $('bypasscancel').onclick = () => { confirmBypass(false); document.querySelector(`#permmode [data-v=${permissionMode()}]`).focus(); };
+  $('bypassok').onclick = () => { confirmBypass(false); set('permissionMode', 'bypass'); };
 
   const WHY = { cheapest: 'Haiku for everything. Fastest.',
     balanced: 'Haiku for quick asks, work model for real work.',
@@ -818,7 +918,7 @@
     $('wdownload').textContent = m?.size ? `Download ${m.size}` : 'Download';
   }
   function paint() {
-    const devin = P.client === 'devin', pi = P.client === 'pi', other = devin || pi, direct = P.client === 'direct', provName = PROVIDERS[P.provider] || PROVIDERS.anthropic;
+    const agy = P.client === 'antigravity', other = agy, direct = P.client === 'direct', provName = PROVIDERS[P.provider] || PROVIDERS.anthropic;   // other: Antigravity runs no Claude tools
     if (!P.routing) P.routing = P.model && P.model !== 'haiku' ? 'capable' : P.escalate === false || P.escalateAuto === false ? 'cheapest' : 'balanced';
     if (!recording) showCaps(P.hotkeyLabel);
     $('reset').style.display = P.hotkeyLabel === '⌃⌥Space' ? 'none' : '';
@@ -828,7 +928,7 @@
     if (recording !== 'dictate' && $('dictatehint').className !== 'warn') { $('dictatehint').textContent = dictateHint(); $('dictatehint').className = dictateHotkeyTaken ? 'taken' : ''; }
     dim('dictateMode', !P.dictateHotkeyLabel);
     document.querySelector('[data-k=dictateMode] [data-v=cleanup]').disabled = other;
-    $('dictatemodehint').textContent = other ? 'Clean up needs Claude.' : 'Clean up drops fillers, fixes misheard words.';
+    $('dictatemodehint').textContent = other ? 'Clean up needs Claude Code or an API key.' : 'Clean up drops fillers, fixes misheard words.';
     document.querySelectorAll('.seg[data-k]').forEach(g => g.querySelectorAll('button').forEach(b => {
       const value = g.dataset.k === 'model' && P.model === 'haiku' ? (P.agentModel === 'opus' ? 'opus' : 'sonnet') : P[g.dataset.k];
       const on = value === b.dataset.v; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
@@ -850,22 +950,21 @@
     document.querySelectorAll('#handsfree .hf').forEach(r => r.classList.toggle('dim', !P.wakeWord));   // they apply to wake-word chats
     $('routingwhy').textContent = WHY[P.routing] || '';
     SERVER.forEach(k => { if (document.activeElement !== $(k)) $(k).value = P[k] || ''; });
+    if (document.activeElement !== $('agyModel')) $('agyModel').value = P.agyModel || '';
+    paintModes();
     $('agentServerModel').hidden = !P.apiBase || other;
-    $('brainlede').textContent = devin ? 'Clover thinks with Devin, on your Devin plan.' : pi ? 'Clover thinks with the provider and model selected in Pi.'
+    $('brainlede').textContent = agy ? 'Clover thinks with Antigravity, on your Google sign-in.'
       : direct ? `Clover thinks with ${provName}, on your own API key.`
       : P.apiBase ? 'Clover thinks with the model on your custom server.' : 'Clover thinks with Claude, on your Claude plan.';
-    $('clientwhy').textContent = devin ? 'Devin CLI, with Clover’s safety check.'
-      : pi ? 'Pi CLI, local models too, with Clover’s safety check.'
+    $('clientwhy').textContent = agy ? 'The Antigravity CLI, with Clover’s safety check. No API key needed.'
       : direct ? 'Talks to the provider straight from your Mac. You pay per use.'
       : P.apiBase ? 'Claude Code, using your server below.' : 'Claude Code, on your Claude plan. No API key needed.';
-    $('direct').hidden = !direct; $('claudeonly').hidden = other || direct;
+    $('direct').hidden = !direct; $('agy').hidden = !agy; $('claudeonly').hidden = other || direct;
     document.querySelector('[data-k=routing]').closest('.row').hidden = other || !!P.apiBase;
     document.querySelector('[data-k=model]').closest('.row').hidden = other || !!P.apiBase || P.routing === 'cheapest';
     $('agentsheading').hidden = $('agentsettings').hidden = other;
-    $('planname').textContent = devin ? 'Devin' : pi ? 'Pi' : direct ? { anthropic: 'Claude API', openai: 'OpenAI', azure: 'Azure OpenAI', custom: 'Custom endpoint' }[P.provider] || 'Claude API' : 'Claude';
-    $('safenote').textContent = devin ? 'Every Devin command waits for approval. File-edit, MCP and subagent tools stay off.'
-      : pi ? 'Every Pi command waits for approval. File-edit and MCP tools stay off.'
-      : 'Risky actions need approval. Background agents use a scratch folder.';
+    $('planname').textContent = agy ? 'Antigravity' : direct ? provName : 'Claude';
+    $('safenote').textContent = agy ? 'Antigravity’s own file and shell tools stay off. Clover checks each command.' : 'Background agents work in a scratch folder.';
     $('meetingDemo').hidden = $('meetingPrepOpen').hidden = !P.meeting; $('meetingOn').hidden = !!P.meeting;   // off: one way to turn it on, not two dead buttons
   }
 
@@ -1162,6 +1261,7 @@
     load(d) {
       P = {talkMode: 'hold', dictateMode: 'verbatim', dictateHotkeyLabel: '', microphone: 'automatic', whisperModel: 'turbo', whisperLanguage: 'auto', meetingSave: true, meetingSummary: true, client: 'claude',
         volume: .16, soundPack: 'clover', handsFreeSpeak: true, voiceCommands: true, handsFreeChime: true, gestures: true, ...DEFAULTS, ...d.prefs}; recording = '';
+      if (!['claude', 'antigravity', 'direct'].includes(P.client)) P.client = 'claude';   // an old Devin or Pi choice reads as Claude Code
       P.routines = d.routines || []; paintRoutines();
       $('shortcut').classList.remove('rec'); $('change').textContent = 'Change Shortcut'; $('dictatechange').classList.remove('rec');
       hotkeyTaken = !!d.hotkeyTaken; dictateHotkeyTaken = !!d.dictateHotkeyTaken; if ($('schint').className !== 'warn') $('schint').className = hotkeyTaken ? 'taken' : '';
