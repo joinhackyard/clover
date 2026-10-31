@@ -44,7 +44,7 @@ jobs:
         run: '"$RUNNER_TEMP/dist/Clover.app/Contents/MacOS/Clover" --selftest'
       - name: Zip the app
         run: ditto -c -k --keepParent "$RUNNER_TEMP/dist/Clover.app" "$RUNNER_TEMP/Clover-macOS.zip"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: Clover-macOS
           path: ${{ runner.temp }}/Clover-macOS.zip
