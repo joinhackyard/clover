@@ -376,11 +376,16 @@ try {
     ui.listen(true); assert(!d.querySelector('.acts'), 'A new ask takes the actions away from the old answer');
     // gestures: synthetic two-finger wheel events (the page treats them like the trackpad's)
     const card = d.getElementById('card'), wheel = (dx, dy, at = d.getElementById('head'), extra = {}) => at.dispatchEvent(new w.WheelEvent('wheel', {deltaX: dx, deltaY: dy, bubbles: true, cancelable: true, ...extra}));
-    const rest = () => new Promise(r => setTimeout(r, 220));
+    const rest = () => new Promise(r => setTimeout(r, 220)), settle = () => new Promise(r => setTimeout(r, 900));   // fingers at rest; a spring at rest
     ui.words('Swipe me'); for (let i = 0; i < 3; i++) wheel(-12, 0);
     assert(/translateX/.test(card.style.transform), 'Two fingers sideways: the box follows'); await rest();
-    assert(!card.style.transform && !messages.some(m => m.close), 'A short swipe springs back');
-    for (let i = 0; i < 14; i++) wheel(-30, 0); await rest();
+    assert(/translateX/.test(card.style.transform), 'Let go, it springs home from where it was, not in a jump');
+    await settle(); assert(!card.style.transform && !messages.some(m => m.close), 'A short swipe springs back');
+    for (let i = 0; i < 4; i++) wheel(-12, 0); await rest(); for (let i = 0; i < 3; i++) wheel(-12, 0);
+    assert(card.classList.contains('swiping') && /translateX/.test(card.style.transform), 'Fingers back mid-spring catch the box where it is');
+    await rest(); await settle();
+    for (let i = 0; i < 14; i++) wheel(-30, 0); await rest(); await new Promise(r => setTimeout(r, 400));
+    assert(messages.filter(m => m.haptic === 'alignment').length >= 1, 'Past the point of no return, the trackpad ticks');
     assert(messages.filter(m => m.close === true).length === 1 && card.style.opacity === '0', 'A long swipe flies the box off and posts {close: true}');
     await new Promise(r => setTimeout(r, 800)); assert(!card.style.transform, 'The box returns if the app keeps it up');
     for (let i = 0; i < 6; i++) wheel(2, 40); await rest();
@@ -391,7 +396,10 @@ try {
     pinch('gesturestart', 1); pinch('gesturechange', 1.5); pinch('gestureend', 1.5);
     assert(!d.body.classList.contains('folded'), 'Pinch out restores the box');
     for (let i = 0; i < 4; i++) wheel(0, 40, d.getElementById('head'), {ctrlKey: true}); await rest();
-    assert(d.body.classList.contains('folded'), 'A ctrl+wheel pinch minimizes too'); d.getElementById('fold').click();
+    assert(d.body.classList.contains('folded'), 'A ctrl+wheel pinch minimizes too'); await settle();
+    for (let i = 0; i < 6; i++) wheel(0, -20); await rest();
+    assert(!d.body.classList.contains('folded') && messages.some(m => m.haptic === 'level'), 'Pulling the minimized bar down opens it');
+    await settle();
     ui.agentDone({id: 'g1', title: 'Gesture card', status: 'done', result: 'Done.'}); d.getElementById('thread').scrollTop = 0;
     for (let i = 0; i < 6; i++) wheel(0, -25, d.querySelector('.agent-card b')); await new Promise(r => setTimeout(r, 500));
     assert(messages.some(m => m.agentLater === 'g1') && !d.querySelector('.agent-card'), 'Two fingers down on an agent card picks Later');

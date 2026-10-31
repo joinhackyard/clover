@@ -66,6 +66,7 @@
   #card.held #comp { margin-top: auto; } #card.held #thread { margin-bottom: 14px; }
   /* gestures: the card follows two fingers; on release it springs home (a little bounce: the fingers carried it) or carries on off */
   #card.springing, .springing { transition: transform 460ms var(--spring-bounce), opacity 200ms var(--ease), filter 200ms var(--ease) !important; }
+  .swiping { transition: none !important; }   /* while fingers are on it, it moves with them and nothing else */
   #card.flying, .flying { transition: transform 240ms cubic-bezier(.2, .6, .4, 1), opacity 200ms var(--ease) !important; }
 
   /* ── header: the clover, one status line, quiet controls ── */
@@ -1432,14 +1433,24 @@
   };
   // ── Trackpad gestures (on by default; ui.gestures(false) turns them off) ──
   // Two fingers sideways: the box follows with a rubber band and, past a third of its width, flies off and closes as ✕ does;
-  // short of that it springs back. Pinch in: minimize to the bar; pinch out on the bar: back. Two fingers down on an agent's card
-  // or an idea: its quiet choice (Later / ✕). Only clearly sideways (or, on a card, clearly downward) movement counts, and never
-  // where something could scroll that way, so reading, scrolling and clicks behave exactly as before.
+  // short of that it springs back. Pinch in: minimize to the bar; pinch out on the bar: back. Pull the bar down: back too.
+  // Two fingers down on an agent's card or an idea: its quiet choice (Later / ✕). Only clearly sideways (or, on a card, clearly
+  // downward) movement counts, and never where something could scroll that way, so reading, scrolling and clicks behave as before.
+  // Releases follow Apple's fluid-interface rules: a flick is judged by where its momentum would carry it, not where the fingers
+  // stopped; the spring home or the flight away starts at the fingers' own speed; fingers that come back mid-spring catch the box
+  // where it is. Crossing the point of no return ticks the Force Touch trackpad, once each way.
   let gesturesOn = true;
-  const G = { kind: '', el: null, x: 0, y: 0, sx: 0, sy: 0, scale: 1, idle: 0, native: false, done: 0 };
+  const G = { kind: '', el: null, x: 0, y: 0, sx: 0, sy: 0, scale: 1, idle: 0, native: false, done: 0, trail: [], armed: false, shown: 0 };
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
   const rubber = (d, dim) => Math.sign(d) * dim * (1 - 1 / (Math.abs(d) * .55 / dim + 1));   // follows the fingers, ever more reluctantly
+  const unrubber = (r, dim) => Math.sign(r) * (1 / (1 - Math.min(.98, Math.abs(r) / dim)) - 1) * dim / .55;   // where the fingers were for that offset
+  const give = (d, dim) => .55 / (Math.abs(d) * .55 / dim + 1) ** 2;   // how much of the fingers' speed the box has at d
+  const project = (v, rate = .99) => v / 1000 * rate / (1 - rate);   // Apple's momentum projection: where a flick at v px/s comes to rest
+  const haptic = kind => post({ haptic: kind });
+  const track = v => { const now = performance.now(); G.trail.push([now, v]); while (G.trail.length > 2 && now - G.trail[0][0] > 90) G.trail.shift(); };
+  const speed = () => { const t = G.trail, a = t[0], b = t[t.length - 1]; return t.length > 1 && b[0] - a[0] > 4 ? (b[1] - a[1]) / (b[0] - a[0]) * 1000 : 0; };   // per second, over ~90 ms
   const boxWidth = () => $('card').offsetWidth || 360;
+  const past = () => Math.max(110, boxWidth() * .3);
   const scrollsThatWay = (from, dx, dy) => {
     for (let n = from; n && n.nodeType === 1 && n !== document.body; n = n.parentElement) {
       const st = getComputedStyle(n);
@@ -1448,20 +1459,42 @@
     }
     return false;
   };
+  // A spring that starts where the element is and at the speed it was going (px/s), so nothing jumps and new fingers just take over.
+  const spring = (el, paint, from, to, v, zeta, done) => {
+    cancelAnimationFrame(el.flingId);
+    const s = { x: from, v, r: .38 }; let last = performance.now();
+    const step = now => {
+      springTo(s, to, Math.min(.05, (now - last) / 1000), zeta); last = now; paint(s.x);
+      if (Math.abs(s.x - to) < .4 && Math.abs(s.v) < 8) { el.flingId = 0; paint(to); done?.(); } else el.flingId = requestAnimationFrame(step);
+    };
+    el.flingId = requestAnimationFrame(step);
+  };
+  const paintSwipe = (d, flying) => {
+    const c = $('card'), w = boxWidth(); G.shown = d;
+    c.style.transform = d ? `translateX(${d}px) rotate(${d / w * 3}deg)` : '';
+    c.style.opacity = d ? String((1 - clamp(Math.abs(d) / w * 1.3, 0, flying ? 1 : .7)) * (G.armed ? .82 : 1)) : '';
+  };
+  const paintCard = (el, d) => { el.style.transform = d ? `translateY(${d}px)` : ''; el.style.opacity = d ? String(1 - clamp(d / 160, 0, .6)) : ''; el.shown = d; };
+  const paintPull = d => { $('card').style.transform = d ? `translateY(${d}px) scaleY(${1 + d / 400})` : ''; G.shown = d; };
+  const arm = on => { if (on === G.armed) return; G.armed = on; haptic('alignment'); };   // past the point of no return, or back: one tick
   const begin = (kind, target) => {
-    G.kind = kind; G.el = target; G.x = G.y = 0; G.scale = 1;
-    clearTimeout(G.done); target.classList.remove('springing', 'flying');
+    const caught = target.flingId ? (kind === 'card' ? target.shown || 0 : G.shown) : 0;   // grabbed mid-spring: from where it is now
+    cancelAnimationFrame(target.flingId); target.flingId = 0;
+    G.kind = kind; G.el = target; G.x = G.y = 0; G.scale = 1; G.trail = []; G.armed = false;
+    if (kind === 'swipe') G.x = unrubber(caught, boxWidth()); else if (kind === 'card') G.y = caught > 0 ? unrubber(caught, 160) : 0;
+    clearTimeout(G.done); target.classList.remove('springing', 'flying'); target.classList.add('swiping');
     target.style.animation = 'none';   // its entrance has played; inline motion now belongs to the fingers
   };
-  const release = (target, to, away) => {   // spring home, or fly off
-    target.classList.remove('springing', 'flying'); void target.offsetWidth;
+  const release = (target, to, away) => {   // Reduce Motion: no spring or flight, it simply goes or simply comes back
+    target.classList.remove('springing', 'flying', 'swiping'); void target.offsetWidth;
     target.classList.add(away ? 'flying' : 'springing');
     target.style.transform = to; target.style.opacity = away ? '0' : '';
     clearTimeout(G.done); G.done = setTimeout(() => target.classList.remove('springing', 'flying'), 600);
   };
   const unswipe = () => {   // a new ask, a reset, or gestures turned off: the box is simply where it belongs
-    clearTimeout(G.idle); clearTimeout(G.done); G.kind = ''; G.sx = G.sy = G.x = G.y = 0; G.scale = 1; G.native = false;
-    const c = $('card'); c.classList.remove('springing', 'flying'); c.style.transform = c.style.opacity = '';
+    clearTimeout(G.idle); clearTimeout(G.done); G.kind = ''; G.sx = G.sy = G.x = G.y = G.shown = 0; G.scale = 1; G.native = false; G.armed = false;
+    const c = $('card'); cancelAnimationFrame(c.flingId); c.flingId = 0;
+    c.classList.remove('springing', 'flying', 'swiping'); c.style.transform = c.style.opacity = '';
   };
   const quietChoice = card => {   // what Esc / ✕ does for that card
     if (card.classList.contains('dn')) card.querySelector('.ideax')?.click();
@@ -1470,24 +1503,36 @@
   };
   const gestureEnd = () => {
     clearTimeout(G.idle);
-    const { kind, el: target } = G; G.kind = ''; G.sx = G.sy = 0; G.native = false;
+    const { kind, el: target } = G, v = speed(); G.kind = ''; G.sx = G.sy = 0; G.native = false;
+    target?.classList.remove('swiping');
     if (kind === 'swipe') {
-      const away = Math.abs(G.x) > Math.max(110, boxWidth() * .3), dir = Math.sign(G.x) || 1;
-      release(target, away ? `translateX(${dir * boxWidth() * 1.1}px) rotate(${dir * 4}deg)` : '', away);
-      if (away) { post({ close: true }); G.done = setTimeout(unswipe, 700); }   // the same as ✕; if the box stays up, it comes back
+      const landing = G.x + project(v), away = Math.abs(landing) > past(), dir = Math.sign(landing) || 1, w = boxWidth();
+      if (reduced.matches) release(target, away ? `translateX(${dir * w * 1.1}px) rotate(${dir * 4}deg)` : '', away);
+      else spring(target, d => paintSwipe(d, away), G.shown, away ? dir * w * 1.15 : 0, v * give(G.x, w), away ? 1 : .72);   // home with a little bounce: the fingers threw it
+      if (away) { haptic('level'); setTimeout(() => post({ close: true }), reduced.matches ? 0 : 160); G.done = setTimeout(unswipe, 700); }   // the same as ✕; if the box stays up, it comes back
+      else G.armed = false;
     } else if (kind === 'card') {
-      const away = G.y > 56;
-      release(target, away ? 'translateY(48px) scale(.96)' : '', away);
-      if (away) setTimeout(() => quietChoice(target), 240);
+      const away = G.y + project(v) > 56;
+      if (reduced.matches) release(target, away ? 'translateY(48px) scale(.96)' : '', away);
+      else spring(target, d => paintCard(target, d), target.shown || 0, away ? 64 : 0, v * give(G.y, 160), away ? 1 : .72);
+      if (away) { haptic('level'); setTimeout(() => quietChoice(target), 240); }
+    } else if (kind === 'pull') {
+      const open = G.y + project(v) > 48;
+      if (open) { haptic('level'); foldBox(false); }
+      if (reduced.matches) paintPull(0); else spring($('card'), paintPull, G.shown, 0, 0, .7);
     } else if (kind === 'pinch') {
-      if (!folded && G.scale < .8) foldBox(true); else if (folded && G.scale > 1.2) foldBox(false);
-      release(target, '', false);
+      const s = G.scale + project(v, .95);   // a quick pinch says enough even if it was short
+      if (!folded && s < .8) foldBox(true); else if (folded && s > 1.2) foldBox(false);
+      const k = parseFloat($('card').style.transform.slice(6)) || 1;
+      if (reduced.matches) release(target, '', false);
+      else spring(target, x => { target.style.transform = x === 1 ? '' : `scale(${x})`; target.style.opacity = ''; }, k, 1, 0, .7);
     }
-    G.x = G.y = 0; G.scale = 1;
+    G.x = G.y = 0; G.scale = 1; G.trail = []; G.armed = false;
   };
   const pinchTo = scale => {
     if (G.kind !== 'pinch') begin('pinch', $('card'));
-    G.scale = clamp(scale, .25, 4);
+    G.scale = clamp(scale, .25, 4); track(G.scale);
+    arm(folded ? G.scale > 1.2 : G.scale < .8);
     const k = folded ? clamp(1 + (G.scale - 1) * .1, .97, 1.06) : clamp(1 + (G.scale - 1) * .3, .84, 1.03);
     $('card').style.transform = `scale(${k})`; $('card').style.opacity = folded ? '' : String(clamp(.55 + (k - .84) / .16 * .45, .55, 1));
   };
@@ -1508,25 +1553,41 @@
       const sideways = Math.abs(G.sx) > Math.abs(G.sy) * 1.5, down = (natural ? -G.sy : G.sy) > Math.abs(G.sx) * 1.5;
       if (t?.closest?.('input, textarea, #models')) G.kind = 'scroll';
       else if (sideways && !folded && !document.body.classList.contains('dictate') && !scrollsThatWay(t, G.sx, 0)) begin('swipe', $('card'));
+      else if (down && folded) begin('pull', $('card'));   // the minimized bar, pulled open
       else if (down && card && (card.classList.contains('agent-card') || card.querySelector('.idea')) && !scrollsThatWay(t, 0, G.sy)) begin('card', card);
       else G.kind = 'scroll';   // a scroll stays a scroll until the fingers rest
-      if (G.kind === 'swipe') G.x = natural ? -G.sx : G.sx; else if (G.kind === 'card') G.y = natural ? -G.sy : G.sy;
+      if (G.kind === 'swipe') G.x += natural ? -G.sx : G.sx; else if (G.kind === 'card' || G.kind === 'pull') G.y += natural ? -G.sy : G.sy;
     } else if (G.kind === 'swipe') G.x += fx;
-    else if (G.kind === 'card') G.y += fy;
+    else if (G.kind === 'card' || G.kind === 'pull') G.y += fy;
     if (G.kind === 'swipe') {
-      e.preventDefault();
-      const w = boxWidth(), d = rubber(G.x, w);
-      $('card').style.transform = `translateX(${d}px) rotate(${d / w * 3}deg)`; $('card').style.opacity = String(1 - clamp(Math.abs(d) / w * 1.3, 0, .7));
+      e.preventDefault(); track(G.x); arm(Math.abs(G.x) > past());
+      paintSwipe(rubber(G.x, boxWidth()));
+      const v = speed();   // a real flick decides now, while it still has its speed, instead of crawling out on momentum
+      if (Math.abs(v) > 900 && Math.sign(v) === Math.sign(G.x) && Math.abs(G.x + project(v)) > boxWidth() * .75) { gestureEnd(); G.kind = 'scroll'; }
     } else if (G.kind === 'card') {
-      e.preventDefault();
-      const d = G.y > 0 ? rubber(G.y, 160) : -rubber(-G.y, 40);
-      G.el.style.transform = `translateY(${d}px)`; G.el.style.opacity = String(1 - clamp(d / 160, 0, .6));
+      e.preventDefault(); track(G.y); arm(G.y > 56);
+      paintCard(G.el, G.y > 0 ? rubber(G.y, 160) : -rubber(-G.y, 40));
+    } else if (G.kind === 'pull') {
+      e.preventDefault(); track(G.y); arm(G.y > 48);
+      paintPull(G.y > 0 ? rubber(G.y, 60) : 0);
     }
   }, { passive: false });
   // Safari's own pinch events (WebKit sends them when the web view itself does not magnify)
   document.addEventListener('gesturestart', e => { if (!gesturesOn) return; e.preventDefault(); clearTimeout(G.idle); G.native = true; begin('pinch', $('card')); });
   document.addEventListener('gesturechange', e => { if (!gesturesOn || G.kind !== 'pinch') return; e.preventDefault(); pinchTo(e.scale); });
   document.addEventListener('gestureend', e => { if (!gesturesOn || G.kind !== 'pinch') return; e.preventDefault(); gestureEnd(); });
+  // Force Touch (native sends the pressure, since the box's clicks go through it): the newest answer presses in with the pressure,
+  // 1:1 with no animation of its own; a force click reads it aloud, and letting go springs it back.
+  const F = { el: null, fired: false };
+  window.ui.force = ([x, y, stage, p]) => {
+    const a = gesturesOn && stage ? document.elementFromPoint(x, y)?.closest('.turn:not(.old) .a[data-answer]') : null;
+    if (F.el && F.el !== a) { const was = F.el; was.style.transition = 'transform 420ms var(--spring-bounce)'; was.style.transform = ''; setTimeout(() => was.style.transition = '', 450); }
+    F.el = a; if (!a) { F.fired = false; return; }
+    if (stage >= 2 && !F.fired) { F.fired = true; post({ speak: true }); }
+    if (reduced.matches) return;
+    a.style.transition = 'none'; a.style.transformOrigin = '50% 30%';
+    a.style.transform = `scale(${stage >= 2 ? .975 : 1 - Math.max(0, p - .35) * .025})`;
+  };
   fit(); post({ ready: 1 });
 </script>
 </body></html>

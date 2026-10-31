@@ -95,6 +95,10 @@
   section { display: none; max-width: 580px; margin: 0 auto; }
   section.on { display: block; animation: enter .24s var(--ease-out); }
   @keyframes enter { from { opacity: 0; transform: translateY(6px); } }
+  /* a two-finger swipe turns the page: the next section comes in from the side the fingers came from, as the old one left */
+  section.on.from-next { animation: from-next .32s var(--ease-out); } section.on.from-prev { animation: from-prev .32s var(--ease-out); }
+  @keyframes from-next { from { opacity: 0; transform: translateX(28px); } }
+  @keyframes from-prev { from { opacity: 0; transform: translateX(-28px); } }
   h1 { font: 600 22px/1.2 system-ui; letter-spacing: -.018em; margin: 0 0 4px; }
   h1:has(> .ni) { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }   /* the page's sidebar icon, larger, beside its title */
   h1 .ni { width: 30px; height: 30px; border-radius: 9px; } h1 .ni svg { width: 18px; height: 18px; }
@@ -464,7 +468,7 @@
     </div>
     <h3>Gestures</h3>
     <div class="group">
-      <div class="row"><div class="t"><b>Trackpad gestures</b><span>Swipe the box away, pinch to minimize.</span></div><label class="sw"><input type="checkbox" data-k="gestures" aria-label="Trackpad gestures"></label></div>
+      <div class="row"><div class="t"><b>Trackpad gestures</b><span>Swipe, pinch, pull and force click.</span></div><label class="sw"><input type="checkbox" data-k="gestures" aria-label="Trackpad gestures"></label></div>
     </div>
     <h3>Clover</h3>
     <div class="group">
@@ -781,6 +785,65 @@
     if (s === 'brain') probe();
   }
   document.querySelectorAll('nav button[data-s]').forEach(b => b.onclick = () => openSection(b.dataset.s));
+  // Two fingers sideways on a page: it follows them with a rubber band; past a quarter of its width, or flicked that far, the next
+  // or previous section in the sidebar comes in from that side, and the trackpad ticks. The ends of the list resist and spring back
+  // at the fingers' speed. Never over something that scrolls sideways, never with Trackpad gestures off; Reduce Motion just turns.
+  const SW = { kind: '', el: null, x: 0, sx: 0, sy: 0, idle: 0, trail: [], armed: false, shown: 0 };
+  const swRubber = (d, dim) => Math.sign(d) * dim * (1 - 1 / (Math.abs(d) * .55 / dim + 1));
+  const swUnrubber = (r, dim) => Math.sign(r) * (1 / (1 - Math.min(.98, Math.abs(r) / dim)) - 1) * dim / .55;
+  const swStill = () => document.body.classList.contains('reduce') || matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const swNeighbour = dir => {   // dir 1: the section below in the sidebar, -1: above (Apps belongs to Account & Access)
+    const order = [...document.querySelectorAll('nav button[data-s]:not(#feedbacknav)')].map(b => b.dataset.s), at = document.querySelector('section.on')?.id;
+    const i = order.indexOf(at === 'apps' ? 'account' : at); return i < 0 ? null : order[i + dir] || null;
+  };
+  const swDim = d => swNeighbour(d < 0 ? 1 : -1) ? 900 : 60;   // nowhere to go that way: it barely moves
+  const swPaint = d => { const el = SW.el; if (!el) return; SW.shown = d; el.style.transform = d ? `translateX(${d}px)` : ''; el.style.opacity = d ? String(1 - Math.min(.45, Math.abs(d) / 640)) : ''; };
+  const swSpeed = () => { const t = SW.trail, a = t[0], b = t[t.length - 1]; return t.length > 1 && b[0] - a[0] > 4 ? (b[1] - a[1]) / (b[0] - a[0]) * 1000 : 0; };
+  const swHome = (el, v) => {   // a spring from where it is, at its speed, a little bounce because the fingers threw it
+    const s = { x: SW.shown, v }, w = 2 * Math.PI / .38; let last = performance.now();
+    const step = now => {
+      for (let left = Math.min(.05, (now - last) / 1000); left > 1e-6; left -= .008) { const h = Math.min(.008, left); s.v += (w * w * -s.x - 2 * .75 * w * s.v) * h; s.x += s.v * h; }
+      last = now; SW.el = el; swPaint(s.x);
+      if (Math.abs(s.x) < .4 && Math.abs(s.v) < 8) { swPaint(0); el.fling = 0; } else el.fling = requestAnimationFrame(step);
+    };
+    el.fling = requestAnimationFrame(step);
+  };
+  const swEnd = () => {
+    clearTimeout(SW.idle);
+    const { kind, el } = SW, v = swSpeed(); SW.kind = ''; SW.sx = SW.sy = 0;
+    if (kind === 'swipe' && el) {
+      const landing = SW.x + v / 1000 * .99 / .01, dir = landing < 0 ? 1 : -1, to = swNeighbour(dir);
+      if (to && Math.abs(landing) > el.offsetWidth * .25) {
+        post({ do: 'haptic', kind: 'level' }); swPaint(0); openSection(to);
+        if (!swStill()) { const now = $(to); now.classList.add(dir > 0 ? 'from-next' : 'from-prev'); setTimeout(() => now.classList.remove('from-next', 'from-prev'), 400); }
+      } else if (swStill()) swPaint(0);
+      else swHome(el, v * .55 / (Math.abs(SW.x) * .55 / swDim(SW.x) + 1) ** 2);
+    }
+    SW.x = 0; SW.trail = []; SW.armed = false;
+  };
+  document.addEventListener('wheel', e => {
+    if (P?.gestures === false || e.ctrlKey || !$('notice').hidden) return;
+    const natural = e.webkitDirectionInvertedFromDevice !== false, unit = e.deltaMode === 1 ? 16 : 1, dx = e.deltaX * unit, dy = e.deltaY * unit;
+    clearTimeout(SW.idle); SW.idle = setTimeout(swEnd, 140);
+    if (!SW.kind) {
+      SW.sx += dx; SW.sy += dy;
+      if (Math.abs(SW.sx) + Math.abs(SW.sy) < 8) return;
+      const t = e.target.nodeType === 1 ? e.target : e.target.parentElement, sec = t?.closest?.('main') && document.querySelector('section.on');
+      let wide = false;
+      for (let n = t; n && n.nodeType === 1 && n !== document.body; n = n.parentElement) { const st = getComputedStyle(n); if (/auto|scroll/.test(st.overflowX) && n.scrollWidth > n.clientWidth + 1) wide = true; }
+      if (sec && !wide && Math.abs(SW.sx) > Math.abs(SW.sy) * 1.5 && !t.closest('input, textarea, select')) {
+        cancelAnimationFrame(sec.fling); SW.kind = 'swipe'; SW.el = sec; SW.trail = [];
+        SW.x = sec.fling ? swUnrubber(SW.shown, swDim(SW.shown)) : 0; sec.fling = 0;   // caught mid-spring: from where it is
+        SW.x += natural ? -SW.sx : SW.sx;
+      } else { SW.kind = 'scroll'; return; }
+    } else if (SW.kind === 'swipe') SW.x += natural ? -dx : dx;
+    if (SW.kind !== 'swipe') return;
+    e.preventDefault();
+    const now = performance.now(); SW.trail.push([now, SW.x]); while (SW.trail.length > 2 && now - SW.trail[0][0] > 90) SW.trail.shift();
+    const armed = !!swNeighbour(SW.x < 0 ? 1 : -1) && Math.abs(SW.x) > SW.el.offsetWidth * .25;
+    if (armed !== SW.armed) { SW.armed = armed; post({ do: 'haptic', kind: 'alignment' }); }
+    if (!swStill()) swPaint(swRubber(SW.x, swDim(SW.x)));
+  }, { passive: false });
   document.querySelectorAll('[data-do]').forEach(b => b.onclick = () => post({ do: b.dataset.do }));
   $('meetingOn').onclick = () => set('meeting', true);
   let connected = false;   // Enable All opens claude.ai's connectors page only when none is connected

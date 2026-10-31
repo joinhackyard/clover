@@ -285,6 +285,8 @@ func listenMic() -> MicrophoneDevice? {
     let sys = AudioObjectID(kAudioObjectSystemObject)
     return chooseMic(Prefs.str("microphone"), microphones(), audioProp(sys, kAudioHardwarePropertyDefaultInputDevice, AudioDeviceID(0)).first ?? 0)
 }
+/// A page's gesture crossed its point of no return ("alignment") or committed ("level"): the Force Touch trackpad ticks, on the same frame.
+func trackpadTick(_ kind: String?) { NSHapticFeedbackManager.defaultPerformer.perform(kind == "level" ? .levelChange : .alignment, performanceTime: .now) }
 // Opens only the chosen mic. AVAudioEngine opens the default input first, which flips Bluetooth headphones into call mode and keeps them there.
 final class Mic: NSObject, AVCaptureAudioDataOutputSampleBufferDelegate {
     private var session: AVCaptureSession?, onBuffer: ((AVAudioPCMBuffer) -> Void)?
@@ -2471,9 +2473,9 @@ final class App: NSObject, WKScriptMessageHandler {
             guard let self, !handsFree, panel.isVisible, !busy, !engine.isRunning, !stuck, !drawing.active, !drawing.hasInput else { return }
             close(clear: false)
         }
-        var grab: (mouse: NSPoint, origin: NSPoint)?, moved = false
+        var grab: (mouse: NSPoint, origin: NSPoint)?, moved = false, forced = false
         var sizing: (mouse: NSPoint, frame: NSRect, e: (l: Bool, r: Bool, t: Bool, b: Bool))?   // dragging an edge or corner
-        NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .leftMouseDragged, .leftMouseUp]) { [weak self] e in
+        NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .leftMouseDragged, .leftMouseUp, .pressure]) { [weak self] e in
             guard let self else { return e }
             switch e.type {
             case .leftMouseDown:
@@ -2482,7 +2484,11 @@ final class App: NSObject, WKScriptMessageHandler {
                 if let ed = edges(p), !(overX(p) && !ed.r && !ed.t) { sizing = (NSEvent.mouseLocation, panel.frame, ed); fromTop = ed.t; pinned = true; dragging = true }
                 else if overX(p) { close(clear: true) }
                 else if p.y < compH { if !panel.isKeyWindow && replacement == nil { selection = TextSelection.capture() }; pinned = true; panel.makeKey(); panel.makeFirstResponder(web); return e }   // the typing box: a normal click; a waiting Insert/Replace keeps its target
-                else { if !pillOn { pinned = true }; grab = (NSEvent.mouseLocation, panel.frame.origin); moved = false; dragging = true }   // the pill is not a box to keep
+                else { if !pillOn { pinned = true }; grab = (NSEvent.mouseLocation, panel.frame.origin); moved = false; forced = false; dragging = true }   // the pill is not a box to keep
+            case .pressure:   // Force Touch on the box: the page presses the answer in with it; a force click reads it aloud instead of copying
+                guard grab != nil, !moved, e.window == panel else { return e }
+                if e.stage >= 2 { forced = true }
+                js("force", [e.locationInWindow.x, panel.frame.height - e.locationInWindow.y, Double(e.stage), Double(e.pressure)])
             case .leftMouseDragged:
                 if let z = sizing {   // width from the side edges, height from the top/bottom; a corner does both
                     let m = NSEvent.mouseLocation, dx = m.x - z.mouse.x, dy = m.y - z.mouse.y
@@ -2501,9 +2507,11 @@ final class App: NSObject, WKScriptMessageHandler {
                 if sizing != nil { sizing = nil; js("resizeDone"); DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in self?.fromTop = false }; Prefs.set("boxH", Prefs.num("boxH")); return nil }   // saves both
                 guard grab != nil else { return e }
                 grab = nil
-                if !moved {   // a click, not a drag: the page decides (answer = copy, anywhere else = type)
+                let at = [e.locationInWindow.x, panel.frame.height - e.locationInWindow.y]
+                js("force", [at[0], at[1], 0, 0])   // let go: a pressed-in answer springs back
+                if !moved && !forced {   // a click, not a drag: the page decides (answer = copy, anywhere else = type)
                     panel.makeKey(); panel.makeFirstResponder(web)
-                    js("tap", [e.locationInWindow.x, panel.frame.height - e.locationInWindow.y])
+                    js("tap", at)
                 }
             }
             return nil
@@ -2617,6 +2625,7 @@ final class App: NSObject, WKScriptMessageHandler {
             if b["mic"] != nil && (!busy || retryOffer) && (!engine.isRunning || quietFollowUp) { if quietFollowUp { hush() }; clickMicrophone() }
             if b["ready"] != nil { js("size", Prefs.num("boxH")); js("gestures", Prefs.bool("gestures")); followAppearance?(); if Prefs.bool("tips") && !Prefs.bool("pointCoached") { js("pointCoach") } }
             if b["close"] != nil { close(clear: true) }   // the box swiped away with two fingers, like its ✕
+            if let h = b["haptic"] as? String { trackpadTick(h) }
             if b["speak"] != nil {   // the answer's Read aloud button: one answer, whatever the Read answers aloud setting says
                 let last = answer.hasPrefix("✓ ") ? String(answer.dropFirst(2)) : answer
                 if voice?.isRunning == true { shush() } else if !last.isEmpty { deliver(last, force: true) }
@@ -4691,6 +4700,7 @@ final class Onboarding: NSObject, WKScriptMessageHandler, NSWindowDelegate {
         guard let b = m.body as? [String: String] else { return }
         if b["do"] == "done" { return finish() }
         if b["do"] == "cheer" { openCheer("setup"); return }
+        if b["do"] == "haptic" { return trackpadTick(b["kind"]) }
         if b["do"] == "feedback" { Clover.settings.open(tab: "feedback"); return }
         if b["do"] == "enableAll" { return enableAll(connected: b["connected"] == "true") }
         if b["do"] == "provider", let c = b["client"], ["claude", "antigravity", "direct"].contains(c) {   // the plan row's Change provider sheet
@@ -5581,6 +5591,7 @@ final class SettingsWindow: NSObject, WKScriptMessageHandler, WKNavigationDelega
     func handle(_ b: [String: Any]) {
         guard let what = b["do"] as? String else { return }
         switch what {
+        case "haptic": trackpadTick(b["kind"] as? String)
         case "feedbackInvalidate": feedbackJob += 1; feedbackURL = nil
         case "feedbackPreview": feedbackPreview(b["include"] as? Bool ?? false, b["text"] as? String ?? "", b["revision"] as? Int ?? 0)
         case "feedbackOpen": if let feedbackURL { NSWorkspace.shared.open(feedbackURL) }

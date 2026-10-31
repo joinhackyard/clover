@@ -31,6 +31,9 @@
   .page > * { flex-shrink: 0; }   /* the page scrolls; a squeezed overflow:hidden list would clip its own rows */
   .page.on { opacity: 1; pointer-events: auto; transform: none; filter: none; }
   .page.gone { transform: translateX(-16px); transition-duration: .16s; transition-timing-function: var(--ease); }
+  /* going back, pages travel the other way: the old one leaves to the right, the earlier one comes back from the left */
+  body.backward .page:not(.on):not(.gone) { transform: translateX(-24px); } body.backward .page.gone { transform: translateX(16px); }
+  .page.swiping { transition: none; }   /* under two fingers it moves with them and nothing else */
 
   h1 { font: 600 30px/1.12 system-ui; letter-spacing: -.024em; margin: 20px 0 10px; }
   h2 { font: 600 22px/1.2 system-ui; letter-spacing: -.018em; margin: 0 0 8px; }
@@ -676,6 +679,7 @@
     || provider === 'direct' && id === 'agents';   // Claude Code tools and Claude connectors don't apply to an API key
   const go = id => {
     while (skip(id)) id = pages[pages.indexOf(id) + 1];
+    document.body.classList.toggle('backward', !!cur && pages.indexOf(id) < pages.indexOf(cur)); void document.body.offsetWidth;   // the way it travels
     if (recording) post({ do: 'cancelRecord' });
     if (cur) { $(cur).classList.remove('on'); $(cur).classList.add('gone'); const c = cur; setTimeout(() => $(c).classList.remove('gone'), 600); }
     cur = id; orbWake?.(); orbWake = null; $(id).classList.add('on');
@@ -1168,6 +1172,43 @@
   });
 
   $('hero').onclick = () => { $('hero').classList.remove('again'); void $('hero').offsetWidth; $('hero').classList.add('again'); };   // tap the clover: it blooms again
+  // Two fingers sideways turn the page, as Back or Continue would: it follows the fingers with a rubber band and, past a fifth of
+  // the window or flicked that far, turns (the trackpad ticks). Continue only where the page has one way on; otherwise it resists.
+  const OW = { kind: '', x: 0, sx: 0, sy: 0, idle: 0, trail: [], armed: false };
+  const owWay = dir => {   // dir -1: Back; 1: the page's one Continue
+    if (dir < 0) return $('back').hidden ? null : $('back');
+    const on = [...$(cur).querySelectorAll('[data-go]')].filter(b => b.offsetParent && !b.disabled); return on.length === 1 ? on[0] : null;
+  };
+  const owEnd = () => {
+    clearTimeout(OW.idle);
+    const kind = OW.kind, t = OW.trail, a = t[0], b = t[t.length - 1], v = t.length > 1 && b[0] - a[0] > 4 ? (b[1] - a[1]) / (b[0] - a[0]) * 1000 : 0;
+    OW.kind = ''; OW.sx = OW.sy = 0; OW.trail = []; OW.armed = false;
+    if (kind !== 'swipe') return;
+    const page = $(cur), landing = OW.x + v / 1000 * .99 / .01, way = owWay(landing > 0 ? -1 : 1);
+    page.classList.remove('swiping'); page.style.transform = page.style.opacity = '';   // home, or on with the turn, from where it is
+    if (way && Math.abs(landing) > innerWidth * .2) { post({ do: 'haptic', kind: 'level' }); way.click(); }
+    OW.x = 0;
+  };
+  document.addEventListener('wheel', e => {
+    if (prefs.gestures === false || e.ctrlKey || !cur || !$('prov').hidden) return;
+    const natural = e.webkitDirectionInvertedFromDevice !== false, dx = e.deltaX * (e.deltaMode === 1 ? 16 : 1), dy = e.deltaY * (e.deltaMode === 1 ? 16 : 1);
+    clearTimeout(OW.idle); OW.idle = setTimeout(owEnd, 140);
+    if (!OW.kind) {
+      OW.sx += dx; OW.sy += dy;
+      if (Math.abs(OW.sx) + Math.abs(OW.sy) < 8) return;
+      const t = e.target.nodeType === 1 ? e.target : e.target.parentElement;
+      OW.kind = Math.abs(OW.sx) > Math.abs(OW.sy) * 1.5 && !t?.closest?.('input, textarea, select') ? 'swipe' : 'scroll';
+      if (OW.kind === 'swipe') { OW.x = natural ? -OW.sx : OW.sx; $(cur).classList.add('swiping'); }
+    } else if (OW.kind === 'swipe') OW.x += natural ? -dx : dx;
+    if (OW.kind !== 'swipe') return;
+    e.preventDefault();
+    const now = performance.now(); OW.trail.push([now, OW.x]); while (OW.trail.length > 2 && now - OW.trail[0][0] > 90) OW.trail.shift();
+    const way = owWay(OW.x > 0 ? -1 : 1), armed = !!way && Math.abs(OW.x) > innerWidth * .2, dim = way ? 600 : 50;
+    if (armed !== OW.armed) { OW.armed = armed; post({ do: 'haptic', kind: 'alignment' }); }
+    if (reduced.matches) return;
+    const d = Math.sign(OW.x) * dim * (1 - 1 / (Math.abs(OW.x) * .55 / dim + 1));
+    $(cur).style.transform = `translateX(${d}px)`; $(cur).style.opacity = String(1 - Math.min(.4, Math.abs(d) / 700));
+  }, { passive: false });
   paintPrefs(); go(window.obStart || 'welcome');
 
   // The same orb as the overlay, breathing.
