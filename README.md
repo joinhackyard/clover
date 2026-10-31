@@ -6,8 +6,16 @@
 </p>
 
 <p align="center">
-  <b>Clover is a free, open-source AI voice assistant for macOS.</b> Talk to your Mac, point at your screen, and let it do the work:<br>
-  window management, file search, screen reading, dictation, background agents and hands-free chat, on Claude, Antigravity, OpenAI, Gemini, Azure or a local model.
+  <b>Clover is a free, open-source voice assistant that lives on your Mac.</b><br>
+  Talk to it, point at your screen, or flick it away with two fingers. It arranges windows, finds files, reads what you’re looking at,<br>
+  types for you anywhere, and runs bigger jobs in the background, on Claude, Antigravity, OpenAI, Gemini, Azure or a model on your own Mac.
+</p>
+
+<p align="center">
+  <a href="https://github.com/joinhackyard/clover/releases/latest"><b>Download for Mac</b></a> ·
+  <a href="https://joinhackyard.github.io/clover/">Website</a> ·
+  <a href="https://joinhackyard.github.io/clover/docs.html">Docs</a> ·
+  <a href="#install">Install from source</a>
 </p>
 
 <p align="center">
@@ -36,7 +44,7 @@ Needs macOS 26 and one AI: Claude Code on your Claude plan (the default), **Anti
 - **Sees your screen.** Ask about anything on screen. Ask “where do I click?” and it points at the spot.
 - **Draws to explain.** “Explain this and draw it” builds a labeled diagram on your screen, step by step.
 - **Interactive answers.** Code blocks with copy buttons, link chips, tables and math, plus Copy · Read aloud · Follow up under every answer.
-- **Mac gestures.** Two-finger swipe the box away, pinch it small while Clover works, pinch out to bring it back. Springy, Reduce Motion aware.
+- **Feels like a Mac.** Flick the box away with two fingers, pinch it small, pull it back down, force click an answer to hear it. Everything moves on real springs, carries your fingers’ speed, and ticks the trackpad when it commits. [All gestures](#gestures)
 - **Cute sounds.** Clover’s own little sound pack (Pip, Hop, Bloom, Hush, Chirp), or classic Mac sounds, or silence.
 - **Dictate anywhere.** Hold fn, talk, let go. Your words land in any text field, cleaned up.
 - **Background agents.** Big jobs run behind your apps while you keep working.
@@ -104,15 +112,36 @@ Settings → Account & Access → **Safety** has three modes:
 
 In every mode, for every AI provider, `rm`, `sudo`, disk tools, shutdown and `git push` stay blocked. Every exact command is in the ask log. Apple’s on-device speech turns your voice into text, and audio never leaves your Mac.
 
+## Gestures
+
+Clover answers to the trackpad the way Apple’s own apps do. Turn them off in Settings → General → Gestures.
+
+| Where | Gesture | What happens |
+|---|---|---|
+| The box | Two fingers sideways | The box follows your fingers. Let go past a third of its width, or flick, and it flies off and closes. Short of that it springs home. |
+| The box | Pinch in | Tucks into the small bar with its live steps, so Clover keeps working out of your way. |
+| The small bar | Pinch out, or pull down with two fingers | Opens the full box again. |
+| An answer | Force click | Presses in with your finger and reads the answer aloud. |
+| An agent card or an idea | Two fingers down | Its quiet choice: *Later* or ✕. |
+| Settings | Two fingers sideways | Turns to the next or previous section. The ends of the list stretch and bounce back. |
+| Setup | Two fingers sideways | Back, or on to the next step. |
+
+How it feels, and why:
+
+- **Your fingers’ speed carries through.** Clover judges a flick by where its momentum would land, not where your fingers stopped, then starts the spring at the speed you let go.
+- **You can always grab it again.** Put your fingers back while the box is still springing and it stops right there, under them.
+- **The trackpad ticks** on a Force Touch trackpad when a gesture passes its point of no return, and again when it commits.
+- **Rubber-band edges.** Where there is nowhere to go, things stretch a little and come back instead of stopping dead.
+- **Reduce Motion** swaps every spring and flight for a quick fade.
+- **Scrolling stays scrolling.** Only clearly sideways (or clearly downward, on a card) movement counts, and never over something that scrolls that way.
+
 <details>
-<summary><b>How the shortcut, the box and the gestures work</b></summary>
+<summary><b>How the shortcut and the box work</b></summary>
 <br>
 
 Choose **Hold to talk** or **Press to toggle** in Settings → General → Shortcut behavior. Hold mode sends when you release. Toggle mode starts on the first press and sends on the second. Pressing the shortcut while Clover answers stops it; during spoken playback it stops the voice. Esc cancels listening without sending.
 
 Click any answer to copy it. Click your request to edit and ask again, or press ↑ in an empty typing box to recall the latest request. While Clover works in a covered window, another Space, or another display, a live mini screen shows that window.
-
-**Gestures** (Settings → General → Gestures): swipe two fingers sideways on the box and it follows your fingers, then flies away past the threshold or springs back. Pinch in to tuck it into the small bar with its live steps; pinch out to bring it back. Swipe down on a card to dismiss it. Everything respects Reduce Motion.
 
 </details>
 
@@ -177,6 +206,7 @@ Offline regressions for the brain, the provider engine (against mock Claude/Open
 - `clover.py` — the brain: instant commands, system prompt, helpers for windows, web and screen, the safety gate
 - `clover_engine.py` — Clover’s own model engine for API keys (Claude, OpenAI, Azure, custom)
 - `ui/` — the overlay, setup, Settings, agents and meeting pages; `ui/orbs.js` the Clover orb and answer renderer; `ui/sounds/` the sound pack
+- `docs/` — the website ([joinhackyard.github.io/clover](https://joinhackyard.github.io/clover/)): `index.html` and `docs.html`, published by `.github/workflows/pages.yml`
 - `scripts/make_sounds.py`, `scripts/make_art.py` — the sounds and the icon/banner are generated from code
 
 ## Budget

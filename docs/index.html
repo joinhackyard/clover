@@ -1,0 +1,665 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Clover for Mac</title>
+<meta name="description" content="Clover is a free, open-source voice assistant for macOS. Hold ⌃⌥Space or say “Clover”: it moves your windows, finds your files, reads your screen, types for you anywhere and runs bigger jobs in the background.">
+<meta name="theme-color" content="#F7F3EA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141311" media="(prefers-color-scheme: dark)">
+<meta property="og:title" content="Clover — your whole Mac, one sentence away">
+<meta property="og:description" content="A free, open-source voice assistant for macOS. Talk to your Mac, point at your screen, flick it away with two fingers.">
+<meta property="og:image" content="https://joinhackyard.github.io/clover/social-preview.png">
+<meta property="og:url" content="https://joinhackyard.github.io/clover/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap">
+<link rel="stylesheet" href="site.css">
+<style>
+  /* ───────── Hero ───────── */
+  .hero { position: relative; padding: clamp(40px, 7vw, 88px) 0 0; text-align: center; }
+  .hero::before { content: ""; position: absolute; inset: -64px 0 auto; height: 900px; z-index: -1; pointer-events: none;
+    background: radial-gradient(60% 50% at 50% 0%, color-mix(in oklab, var(--accent) 16%, transparent), transparent 70%),
+                radial-gradient(30% 30% at 80% 30%, color-mix(in oklab, var(--petal) 14%, transparent), transparent 70%),
+                radial-gradient(30% 30% at 18% 40%, color-mix(in oklab, var(--sun) 12%, transparent), transparent 70%); }
+  .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 6px; border-radius: 999px; background: var(--surface); box-shadow: var(--shadow-sm);
+    font-size: 13.5px; font-weight: 500; color: var(--ink-2); text-decoration: none; transition: transform 140ms var(--ease), box-shadow 150ms ease; }
+  .pill:hover { box-shadow: var(--shadow); } .pill:active { transform: scale(.98); }
+  .pill b { padding: 4px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-ink); font-size: 12px; font-weight: 700; }
+  .hero h1 { margin: 22px auto 0; font-size: clamp(40px, 7.6vw, 96px); text-wrap: balance; }
+  .grad { background: linear-gradient(100deg, var(--accent) 10%, color-mix(in oklab, var(--accent) 55%, var(--sun)) 60%, var(--accent-deep) 95%);
+    -webkit-background-clip: text; background-clip: text; color: transparent; padding-bottom: .06em; }
+  .hero .lede { max-width: 620px; margin: 22px auto 0; }
+  .hero .lede kbd { font-size: .78em; }
+  .ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 32px; }
+  .hero .cmd { width: min(560px, 100%); margin: 22px auto 0; }
+  .meta { margin-top: 14px; font-size: 13px; color: var(--ink-3); }
+
+  /* ───────── The demo: a little Mac with Clover on it ───────── */
+  .stage { container-type: inline-size; position: relative; margin: clamp(48px, 7vw, 80px) auto 0; max-width: 1080px; }
+  .screen { position: relative; aspect-ratio: 16 / 10; border-radius: clamp(10px, 1.6cqw, 22px); overflow: hidden; isolation: isolate;
+    background: radial-gradient(70% 90% at 15% 110%, #F2A7B8 0%, transparent 55%), radial-gradient(80% 80% at 100% 0%, #F4C76B 0%, transparent 55%),
+                radial-gradient(90% 90% at 40% 30%, #4CC38A 0%, #2E9E6A 45%, #1F7A50 100%);
+    box-shadow: var(--shadow-lg), inset 0 0 0 1px rgba(255,255,255,.12); font-size: 1cqw; text-align: left; user-select: none; -webkit-user-select: none; }
+  .screen::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 20; border-radius: inherit; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.25); }
+  .menubar { position: absolute; inset: 0 0 auto; height: 2.6em; display: flex; align-items: center; gap: 1.6em; padding: 0 1.6em; z-index: 15;
+    background: rgba(255,255,255,.22); backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%); color: #10231A; font: 500 1.15em/1 var(--font); }
+  .menubar b { font-weight: 700; }
+  .menubar .right { margin-left: auto; display: flex; align-items: center; gap: 1.4em; }
+  .menubar svg { width: 1.5em; height: 1.5em; }
+  .menubar .me { width: 1.7em; height: 1.7em; }
+  .win { position: absolute; left: var(--x); top: var(--y); width: var(--w); height: var(--h); z-index: var(--z, 1); border-radius: 1em; overflow: hidden;
+    background: #FBFAF7; box-shadow: 0 0 0 .5px rgba(0,0,0,.18), 0 1.2em 3.4em -1em rgba(0,0,0,.4); opacity: var(--o, 1); transform: scale(var(--s, 1)); transform-origin: 50% 100%;
+    transition: left .7s var(--spring-soft), top .7s var(--spring-soft), width .7s var(--spring-soft), height .7s var(--spring-soft), opacity .3s ease, transform .5s var(--spring-soft); }
+  .tb { display: flex; align-items: center; gap: .6em; height: 2.8em; padding: 0 1.1em; background: #F1EEE7; border-bottom: .5px solid rgba(0,0,0,.08); font: 600 1.1em/1 var(--font); color: #5E5A52; }
+  .tb i { width: 1.1em; height: 1.1em; border-radius: 50%; background: #FF5F57; } .tb i:nth-child(2) { background: #FEBC2E; } .tb i:nth-child(3) { background: #28C840; margin-right: .8em; }
+  .tb span { flex: 1; text-align: center; margin-right: 4.6em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .codebody { padding: 1.4em 1.6em; font: 1.3em/1.75 var(--mono); color: #3A3732; white-space: pre; }
+  .codebody .n { color: #B5AFA5; margin-right: 1.2em; } .codebody .k { color: #B4508A; } .codebody .f { color: #2E7FB8; } .codebody .s { color: #2E9E6A; }
+  .web { padding: 1.2em; } .url { height: 2.2em; border-radius: 1.1em; background: #EFECE5; margin-bottom: 1.4em; display: flex; align-items: center; padding: 0 1em; font: 1.05em var(--font); color: #8F8A81; }
+  .blk { height: 1em; border-radius: .5em; background: #ECE8DF; margin: .8em 0; } .blk.hero2 { height: 9em; border-radius: .8em; background: linear-gradient(120deg, #DCEFE4, #F7E7C6); }
+  .notes { padding: 1.6em 2em; font: 1.25em/1.7 var(--font); color: #3A3732; } .notes h4 { margin: 0 0 .5em; font: 800 1.5em/1.2 var(--display); }
+  .notes li { margin-left: -.4em; }
+  .dock { position: absolute; left: 50%; bottom: 1.2em; transform: translateX(-50%); display: flex; gap: .8em; padding: .7em; border-radius: 1.6em; z-index: 14;
+    background: rgba(255,255,255,.25); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.4); }
+  .dock i { width: 3.6em; height: 3.6em; border-radius: 1em; background: var(--c); box-shadow: 0 .3em .8em -.3em rgba(0,0,0,.3); }
+  .dock img { width: 3.6em; height: 3.6em; }
+  .ring { position: absolute; z-index: 13; width: 22em; height: 3.6em; border-radius: 1.8em; border: .32em solid #F4C76B; box-shadow: 0 0 0 .5em color-mix(in srgb, #F4C76B 30%, transparent);
+    opacity: 0; transform: scale(1.3); transition: opacity .25s ease, transform .5s var(--spring-soft); pointer-events: none; }
+  .ring.on { opacity: 1; transform: none; }
+  .np { position: absolute; right: 1.6em; bottom: 7em; z-index: 13; display: flex; align-items: center; gap: 1em; padding: .9em 1.4em .9em .9em; border-radius: 1.4em;
+    background: rgba(29,27,24,.72); color: #F4F1EA; font: 600 1.2em/1.2 var(--font); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    opacity: 0; transform: translateY(1em) scale(.96); transition: opacity .25s ease, transform .5s var(--spring-soft); }
+  .np.on { opacity: 1; transform: none; } .np i { width: 3.4em; height: 3.4em; border-radius: .7em; background: linear-gradient(135deg, #1F7A50, #F2A7B8); }
+  .np small { display: block; font-weight: 500; opacity: .6; }
+  .eq { display: flex; gap: .2em; align-items: end; height: 1.4em; margin-left: .6em; } .eq b { width: .25em; background: #4CC38A; border-radius: .2em; animation: eq .9s ease-in-out infinite alternate; }
+  .eq b:nth-child(2) { animation-delay: -.3s; } .eq b:nth-child(3) { animation-delay: -.6s; }
+  @keyframes eq { from { height: 20%; } to { height: 100%; } }
+
+  /* Clover's box, as the app draws it */
+  .box { --bw: 40cqw; position: absolute; z-index: 16; left: calc(50% - var(--bw) / 2); top: 4.4cqw; width: var(--bw); padding: 1.5cqw 1.7cqw 1.4cqw; border-radius: 1.7cqw;
+    background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(30px) saturate(160%); -webkit-backdrop-filter: blur(30px) saturate(160%);
+    box-shadow: 0 0 0 .5px var(--line-2), 0 .3cqw .8cqw rgba(0,0,0,.08), 0 2.4cqw 5cqw -1.6cqw rgba(0,0,0,.45); color: var(--ink);
+    font-size: 1.32cqw; line-height: 1.5; text-align: left; cursor: grab; touch-action: pan-y; will-change: transform; transition: width .45s var(--spring-soft), padding .45s var(--spring-soft); }
+  .box.grabbing { cursor: grabbing; }
+  .bhead { display: flex; align-items: center; gap: .8em; height: 2.4em; }
+  .bhead canvas { width: 2.4em; height: 2.4em; flex: none; }
+  #bstatus { font-weight: 600; font-size: .92em; color: var(--ink-2); white-space: nowrap; }
+  #bstatus em { font-style: normal; font-weight: 500; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .bhead .hint { margin-left: auto; font-size: .78em; color: var(--ink-3); white-space: nowrap; opacity: .9; }
+  .q { display: none; margin-top: .9em; padding: .55em .9em; border-radius: .95em .95em .95em .3em; width: fit-content; max-width: 100%; background: color-mix(in oklab, var(--accent) 11%, var(--surface)); font-weight: 500; }
+  .q.on { display: block; animation: bubble .3s var(--spring-soft) both; }
+  .q .w { display: inline-block; animation: word .26s var(--ease) both; }
+  .steps { margin-top: .7em; display: grid; gap: .3em; }
+  .step { display: flex; align-items: center; gap: .6em; font-size: .9em; color: var(--ink-2); animation: rise .28s var(--ease) both; }
+  .step i { width: .9em; height: .9em; border-radius: 50%; border: .15em solid var(--accent); border-right-color: transparent; animation: spin .8s linear infinite; flex: none; }
+  .step.ok i { border-color: var(--accent); background: var(--accent); animation: none; box-shadow: inset 0 0 0 .18em var(--surface); }
+  .a { margin-top: .7em; min-height: 0; font-size: 1.06em; line-height: 1.55; letter-spacing: -.005em; transform-origin: 50% 30%; }
+  .a .w { animation: word .3s var(--ease) both; }
+  .a code { font-size: .86em; }
+  .acts { display: flex; gap: .2em; margin: .8em 0 0 -.6em; opacity: 0; transform: translateY(.3em); transition: opacity .25s ease, transform .3s var(--ease); pointer-events: none; }
+  .acts.on { opacity: 1; transform: none; pointer-events: auto; }
+  .acts button { border: 0; background: none; padding: .45em .65em; border-radius: .6em; font: 500 .86em var(--font); color: var(--ink-2); cursor: pointer; transition: background-color .15s ease, color .15s ease, transform .12s var(--ease); }
+  .acts button:hover { background: var(--fill-2); color: var(--ink); } .acts button:active { transform: scale(.95); }
+  .box.folded { --bw: 17cqw; padding: .9cqw 1.4cqw; cursor: pointer; }
+  .box.folded :is(.q, .steps, .a, .acts, .hint) { display: none; }
+  @keyframes bubble { from { opacity: 0; transform: translateY(.3em) scale(.96); } }
+  @keyframes word { from { opacity: 0; filter: blur(2px); transform: translateY(2px); } }
+  @keyframes rise { from { opacity: 0; transform: translateY(.3em); } }
+  @keyframes spin { to { transform: rotate(1turn); } }
+  .try { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 18px; margin: 22px auto 0; font-size: 14px; color: var(--ink-3); }
+  .try span { display: inline-flex; align-items: center; gap: 6px; }
+  .try svg { width: 16px; height: 16px; color: var(--accent-ink); }
+  @media (hover: none) { .try .keys { display: none; } }   /* no keyboard to hold space on */
+
+  @container (max-width: 640px) {
+    .menubar span:not(.right):not(.apple), .dock { display: none; }
+    .box { --bw: auto; position: relative; left: auto; top: auto; margin: -4cqw 3cqw 0; padding: 14px 16px; border-radius: 18px; font-size: 15px; }
+    .box.folded { --bw: auto; margin-inline: 22cqw; padding: 10px 14px; }
+    .bhead canvas { width: 30px; height: 30px; }
+    .bhead .hint { display: none; }
+  }
+
+  /* ───────── Sections ───────── */
+  section.block { padding-top: clamp(96px, 12vw, 160px); }
+  .head { max-width: 760px; }
+  .head.center { margin: 0 auto; text-align: center; }
+  .head h2 { margin: 14px 0 0; font-size: clamp(36px, 5.4vw, 64px); text-wrap: balance; }
+  .head p { margin: 18px 0 0; }
+  .head.center p { margin-inline: auto; max-width: 620px; }
+
+  /* Just ask */
+  .asks { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 48px; }
+  .ask { display: grid; gap: 10px; padding: 22px 24px; border-radius: 22px; background: var(--surface); box-shadow: var(--shadow-sm); transition: transform .3s var(--ease), box-shadow .3s ease; }
+  .ask:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+  .ask q { font: 700 19px/1.35 var(--display); letter-spacing: -.01em; quotes: "“" "”"; }
+  .ask p { margin: 0; color: var(--ink-2); font-size: 15px; }
+  @media (max-width: 720px) { .asks { grid-template-columns: 1fr; } }
+
+  /* Features */
+  .bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-top: 48px; }
+  .tile { position: relative; grid-column: span 2; display: flex; flex-direction: column; min-height: 300px; padding: 26px; border-radius: 26px; overflow: hidden;
+    background: var(--surface); box-shadow: var(--shadow-sm); }
+  .tile.wide { grid-column: span 3; } .tile.full { grid-column: span 6; min-height: 0; }
+  .tile h3 { margin: auto 0 0; font: 800 23px/1.15 var(--display); letter-spacing: -.02em; }
+  .tile p { margin: 8px 0 0; color: var(--ink-2); font-size: 15px; text-wrap: pretty; }
+  .tile .art { flex: 1; display: grid; place-items: center; min-height: 140px; margin-bottom: 18px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; align-content: center; }
+  .chip { padding: 7px 13px; border-radius: 999px; background: var(--fill-2); font: 600 13.5px var(--font); color: var(--ink-2); white-space: nowrap; }
+  .chip.g { background: var(--accent-soft); color: var(--accent-ink); }
+  .wave { display: flex; align-items: center; gap: 6px; height: 74px; }
+  .wave b { width: 7px; border-radius: 4px; background: var(--accent); height: 30%; }
+  .in .wave b { animation: wave 1.1s var(--ease-in-out) infinite alternate; animation-delay: calc(var(--i) * -.13s); }
+  @keyframes wave { from { height: 18%; } to { height: 100%; } }
+  .bigorb { width: 168px; height: 168px; }
+  .pointer { position: relative; width: 200px; height: 120px; border-radius: 16px; background: var(--fill); box-shadow: inset 0 0 0 .5px var(--line); }
+  .pointer .t { position: absolute; left: 22px; right: 22px; height: 10px; border-radius: 5px; background: var(--fill-2); }
+  .pointer .r { position: absolute; left: 112px; top: 64px; width: 54px; height: 30px; border-radius: 15px; border: 3px solid var(--sun); box-shadow: 0 0 0 6px color-mix(in srgb, var(--sun) 25%, transparent); }
+  .in .pointer .r { animation: ping 2.4s var(--ease) infinite; }
+  @keyframes ping { 0% { transform: scale(1.5); opacity: 0; } 25%, 80% { transform: none; opacity: 1; } 100% { opacity: 0; } }
+  .draw path, .draw rect { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 400; stroke-dashoffset: 400; }
+  .in .draw path, .in .draw rect { animation: draw 1.4s var(--ease) forwards; animation-delay: var(--d, 0s); }
+  .draw text { fill: var(--ink-2); font: 600 13px var(--font); opacity: 0; } .in .draw text { animation: fadein .4s ease forwards; animation-delay: var(--d, 0s); }
+  @keyframes draw { to { stroke-dashoffset: 0; } } @keyframes fadein { to { opacity: 1; } }
+  .agent { width: min(280px, 100%); padding: 14px 16px; border-radius: 16px; background: var(--bg); box-shadow: var(--shadow-sm); font-size: 13.5px; }
+  .agent b { display: block; margin-bottom: 8px; font-size: 14px; } .agent div { display: flex; gap: 8px; align-items: center; color: var(--ink-2); padding: 3px 0; }
+  .agent div::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; } .agent div.now::before { background: none; border: 2px solid var(--accent); border-right-color: transparent; width: 6px; height: 6px; animation: spin .8s linear infinite; }
+  .speed { display: grid; gap: 10px; width: min(300px, 100%); font-size: 13.5px; }
+  .speed div { display: grid; grid-template-columns: 74px 1fr auto; gap: 10px; align-items: center; color: var(--ink-2); }
+  .speed i { height: 10px; border-radius: 5px; background: var(--fill-2); overflow: hidden; } .speed i::after { content: ""; display: block; height: 100%; width: var(--w); border-radius: inherit; background: var(--accent); transform-origin: left; transform: scaleX(0); transition: transform 1.2s var(--ease) .2s; }
+  .in .speed i::after { transform: none; }
+  @media (max-width: 900px) { .tile, .tile.wide { grid-column: span 3; } }
+  @media (max-width: 640px) { .bento { grid-template-columns: 1fr; } .tile, .tile.wide, .tile.full { grid-column: auto; min-height: 260px; } }
+
+  /* Gestures */
+  .gest { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 48px; }
+  .gc { padding: 22px; border-radius: 24px; background: var(--surface); box-shadow: var(--shadow-sm); }
+  .gc h3 { margin: 18px 0 0; font: 800 19px/1.2 var(--display); letter-spacing: -.015em; } .gc p { margin: 6px 0 0; color: var(--ink-2); font-size: 14.5px; }
+  .pad { position: relative; height: 150px; border-radius: 16px; background: var(--bg); box-shadow: inset 0 0 0 .5px var(--line); overflow: hidden; }
+  .pad .mini { position: absolute; left: 50%; top: 34px; width: 120px; height: 62px; margin-left: -60px; border-radius: 13px; background: var(--surface); box-shadow: var(--shadow); }
+  .pad .mini::before { content: ""; position: absolute; left: 12px; top: 12px; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); }
+  .pad .mini::after { content: ""; position: absolute; left: 12px; right: 16px; top: 38px; height: 7px; border-radius: 4px; background: var(--fill-2); }
+  .pad .f { position: absolute; width: 18px; height: 18px; border-radius: 50%; background: color-mix(in oklab, var(--ink) 22%, transparent); box-shadow: 0 0 0 5px color-mix(in oklab, var(--ink) 7%, transparent); opacity: 0; }
+  .playing .pad .mini, .playing .pad .f { animation-duration: 3.2s; animation-iteration-count: infinite; animation-timing-function: var(--ease); }
+  .playing .swipe .mini { animation-name: g-swipe; } .playing .swipe .f { animation-name: g-swipe-f; } .swipe .f { top: 100px; left: calc(50% - 20px); } .swipe .f + .f { left: calc(50% + 6px); }
+  @keyframes g-swipe { 0%, 18% { transform: none; opacity: 1; } 42% { transform: translateX(46px) rotate(2deg); } 54% { transform: translateX(260px) rotate(5deg); opacity: 0; } 72% { transform: translateX(260px); opacity: 0; } 73% { transform: translateX(-30px); opacity: 0; } 92%, 100% { transform: none; opacity: 1; } }
+  @keyframes g-swipe-f { 0%, 12% { opacity: 0; transform: none; } 18% { opacity: 1; transform: none; } 42% { opacity: 1; transform: translateX(46px); } 50%, 100% { opacity: 0; transform: translateX(70px); } }
+  .playing .pinch .mini { animation-name: g-pinch; } .pinch .f { top: 60px; left: calc(50% - 60px); } .pinch .f + .f { left: calc(50% + 42px); top: 80px; }
+  .playing .pinch .f { animation-name: g-pinch-a; } .playing .pinch .f + .f { animation-name: g-pinch-b; }
+  @keyframes g-pinch { 0%, 15% { transform: none; } 45%, 75% { transform: scale(.55, .45) translateY(-30px); border-radius: 30px; } 95%, 100% { transform: none; } }
+  @keyframes g-pinch-a { 0%, 10% { opacity: 0; } 15% { opacity: 1; transform: none; } 45% { opacity: 1; transform: translate(34px, 8px); } 52%, 100% { opacity: 0; transform: translate(34px, 8px); } }
+  @keyframes g-pinch-b { 0%, 10% { opacity: 0; } 15% { opacity: 1; transform: none; } 45% { opacity: 1; transform: translate(-34px, -8px); } 52%, 100% { opacity: 0; transform: translate(-34px, -8px); } }
+  .playing .pull .mini { animation-name: g-pull; } .pull .mini { transform: scale(.55, .45) translateY(-30px); } .pull .f { top: 40px; left: calc(50% - 20px); } .pull .f + .f { left: calc(50% + 6px); }
+  .playing .pull .f { animation-name: g-pull-f; }
+  @keyframes g-pull { 0%, 20% { transform: scale(.55, .45) translateY(-30px); } 40% { transform: scale(.6, .55) translateY(-14px); } 60%, 85% { transform: none; } 100% { transform: scale(.55, .45) translateY(-30px); } }
+  @keyframes g-pull-f { 0%, 12% { opacity: 0; transform: none; } 18% { opacity: 1; transform: none; } 42% { opacity: 1; transform: translateY(44px); } 50%, 100% { opacity: 0; transform: translateY(54px); } }
+  .playing .force .mini { animation-name: g-force; } .force .f { top: 56px; left: calc(50% - 9px); } .playing .force .f { animation-name: g-force-f; }
+  .force .waves { position: absolute; right: 26px; top: 46px; display: flex; gap: 3px; align-items: center; height: 20px; opacity: 0; } .force .waves b { width: 3px; height: 100%; border-radius: 2px; background: var(--accent); }
+  .force .waves b:nth-child(2) { height: 55%; } .force .waves b:nth-child(3) { height: 80%; } .playing .force .waves { animation: g-force-w 3.2s var(--ease) infinite; }
+  @keyframes g-force { 0%, 25% { transform: none; } 45% { transform: scale(.94); } 52%, 100% { transform: none; } }
+  @keyframes g-force-f { 0%, 15% { opacity: 0; transform: scale(1.6); } 25% { opacity: 1; transform: none; } 45% { opacity: 1; transform: scale(.7); box-shadow: 0 0 0 12px color-mix(in oklab, var(--accent) 25%, transparent); } 60%, 100% { opacity: 0; } }
+  @keyframes g-force-w { 0%, 48% { opacity: 0; } 55%, 88% { opacity: 1; } 100% { opacity: 0; } }
+  .playing .down .mini { animation-name: g-down; } .down .f { top: 30px; left: calc(50% - 20px); } .down .f + .f { left: calc(50% + 6px); } .playing .down .f { animation-name: g-pull-f; }
+  @keyframes g-down { 0%, 18% { transform: none; opacity: 1; } 40% { transform: translateY(28px); } 52% { transform: translateY(80px) scale(.96); opacity: 0; } 72% { opacity: 0; transform: translateY(80px); } 73% { transform: translateY(20px) scale(.96); opacity: 0; } 92%, 100% { transform: none; opacity: 1; } }
+  .pages .mini { width: 92px; margin-left: -46px; } .pages .mini.b { opacity: 0; } .pages .f { top: 104px; left: calc(50% - 20px); } .pages .f + .f { left: calc(50% + 6px); }
+  .playing .pages .mini.a { animation-name: g-page-a; } .playing .pages .mini.b { animation-name: g-page-b; } .playing .pages .f { animation-name: g-swipe-f-l; }
+  .pages .mini.b::before { background: var(--petal); }
+  @keyframes g-page-a { 0%, 18% { transform: none; opacity: 1; } 42% { transform: translateX(-34px); opacity: .7; } 50%, 100% { transform: translateX(-90px); opacity: 0; } }
+  @keyframes g-page-b { 0%, 44% { transform: translateX(40px); opacity: 0; } 62%, 100% { transform: none; opacity: 1; } }
+  @keyframes g-swipe-f-l { 0%, 12% { opacity: 0; transform: none; } 18% { opacity: 1; transform: none; } 42% { opacity: 1; transform: translateX(-46px); } 50%, 100% { opacity: 0; transform: translateX(-70px); } }
+  .feel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px 40px; margin-top: 56px; }
+  .feel div { border-top: .5px solid var(--line-2); padding-top: 18px; } .feel b { display: block; font: 800 17px/1.3 var(--display); letter-spacing: -.01em; }
+  .feel p { margin: 6px 0 0; color: var(--ink-2); font-size: 15px; }
+  @media (max-width: 900px) { .gest, .feel { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) { .gest, .feel { grid-template-columns: 1fr; } }
+
+  /* Providers */
+  .providers { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 40px; }
+  .providers .chip { padding: 10px 16px; font-size: 15px; background: var(--surface); box-shadow: var(--shadow-sm); color: var(--ink); }
+  .providers .chip small { margin-left: 6px; color: var(--ink-3); font-weight: 500; }
+
+  /* Privacy band */
+  .band { margin-top: clamp(96px, 12vw, 160px); padding: clamp(64px, 9vw, 112px) 0; background: #1F7A50; color: #F7F3EA; position: relative; overflow: hidden; }
+  .band::before { content: ""; position: absolute; inset: 0; background: radial-gradient(50% 80% at 90% 10%, rgba(76,195,138,.5), transparent 70%), radial-gradient(40% 60% at 0% 100%, rgba(242,167,184,.25), transparent 70%); }
+  .band .wrap { position: relative; }
+  .band .eyebrow { color: #A8E6C6; } .band .lede { color: rgba(247,243,234,.78); }
+  .band .head h2 { color: #FFFDF8; }
+  .trust { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 56px; }
+  .trust > div { padding-top: 18px; border-top: .5px solid rgba(247,243,234,.25); }
+  .trust b { display: block; font: 800 20px/1.25 var(--display); } .trust p { margin: 8px 0 0; color: rgba(247,243,234,.75); font-size: 15px; }
+  .modes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; } .modes span { padding: 5px 11px; border-radius: 999px; background: rgba(255,255,255,.12); font-size: 13px; font-weight: 600; }
+  @media (max-width: 760px) { .trust { grid-template-columns: 1fr; } }
+
+  /* Download */
+  .dl { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1fr); gap: 14px; margin-top: 48px; }
+  .card { min-width: 0; display: flex; flex-direction: column; gap: 14px; padding: 28px; border-radius: 26px; background: var(--surface); box-shadow: var(--shadow-sm); }
+  .card h3 { margin: 0; font: 800 22px/1.2 var(--display); letter-spacing: -.02em; } .card p { margin: 0; color: var(--ink-2); font-size: 15px; }
+  .card.main { background: linear-gradient(160deg, color-mix(in oklab, var(--accent) 14%, var(--surface)), var(--surface) 60%); }
+  .card .btn { align-self: flex-start; margin-top: auto; }
+  .card .cmd { margin-top: auto; }
+  .card img { width: 64px; height: 64px; }
+  .needs { display: flex; flex-wrap: wrap; gap: 8px 22px; justify-content: center; margin-top: 28px; color: var(--ink-3); font-size: 14px; }
+  .needs span::before { content: "✓ "; color: var(--accent-ink); font-weight: 700; }
+  @media (max-width: 900px) { .dl { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="icon.png" alt="">Clover <small>by Hackyard</small></a>
+    <nav class="nav-links" aria-label="Site">
+      <a href="#features">Features</a><a href="#gestures">Gestures</a><a href="docs.html">Docs</a><a href="https://github.com/joinhackyard/clover">GitHub</a>
+    </nav>
+    <a class="btn primary" href="https://github.com/joinhackyard/clover/releases/latest" data-download>Download</a>
+  </div>
+</header>
+
+<main>
+<section class="hero">
+  <div class="wrap">
+    <a class="pill" href="https://github.com/joinhackyard/clover/releases/latest"><b>New</b><span>Springs, flicks and force click in Clover <span data-version>1.1</span> →</span></a>
+    <h1 class="display">Your whole Mac,<br> <span class="grad">one sentence away.</span></h1>
+    <p class="lede">Hold <kbd>⌃</kbd> <kbd>⌥</kbd> <kbd>space</kbd> and talk, or just say “Clover”. It moves your windows, finds your files, reads your screen and gets it done. Free, open source, and private by default.</p>
+    <div class="ctas">
+      <a class="btn primary big" href="https://github.com/joinhackyard/clover/releases/latest" data-download>
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.37 12.77c.03 3.06 2.68 4.08 2.71 4.09-.02.07-.42 1.45-1.4 2.88-.84 1.23-1.72 2.46-3.1 2.49-1.36.02-1.8-.81-3.35-.81-1.56 0-2.04.79-3.33.83-1.33.05-2.35-1.33-3.2-2.56-1.73-2.51-3.06-7.09-1.28-10.18.88-1.53 2.46-2.5 4.17-2.53 1.3-.02 2.53.88 3.33.88.79 0 2.28-1.09 3.85-.93.66.03 2.5.27 3.68 2-.1.06-2.2 1.28-2.18 3.82M13.83 3.6c.7-.85 1.18-2.04 1.05-3.22-1.02.04-2.25.68-2.98 1.53-.65.75-1.23 1.96-1.07 3.12 1.13.09 2.29-.58 3-1.43"/></svg>
+        Download for Mac
+      </a>
+      <a class="btn big" href="#demo">See it work</a>
+    </div>
+    <div class="cmd"><code>curl -fsSL https://raw.githubusercontent.com/joinhackyard/clover/main/install.sh | bash</code><button class="copy">Copy</button></div>
+    <div class="meta">macOS 26 or later · Apple silicon and Intel · MIT licensed</div>
+  </div>
+
+  <div class="wrap" id="demo">
+    <div class="stage reveal">
+      <div class="screen" id="screen" aria-hidden="true">
+        <div class="menubar">
+          <span class="apple"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.37 12.77c.03 3.06 2.68 4.08 2.71 4.09-.02.07-.42 1.45-1.4 2.88-.84 1.23-1.72 2.46-3.1 2.49-1.36.02-1.8-.81-3.35-.81-1.56 0-2.04.79-3.33.83-1.33.05-2.35-1.33-3.2-2.56-1.73-2.51-3.06-7.09-1.28-10.18.88-1.53 2.46-2.5 4.17-2.53 1.3-.02 2.53.88 3.33.88.79 0 2.28-1.09 3.85-.93.66.03 2.5.27 3.68 2-.1.06-2.2 1.28-2.18 3.82M13.83 3.6c.7-.85 1.18-2.04 1.05-3.22-1.02.04-2.25.68-2.98 1.53-.65.75-1.23 1.96-1.07 3.12 1.13.09 2.29-.58 3-1.43"/></svg></span>
+          <b id="front">Code</b><span>File</span><span>Edit</span><span>View</span><span>Window</span>
+          <span class="right"><img class="me" src="icon.png" alt=""><span id="clock">Fri 9:41</span></span>
+        </div>
+        <div class="win" id="w-chrome" style="--x:38%;--y:22%;--w:56%;--h:62%;--z:1">
+          <div class="tb"><i></i><i></i><i></i><span>Chrome</span></div>
+          <div class="web"><div class="url">hackyard.org</div><div class="blk hero2"></div><div class="blk" style="width:70%"></div><div class="blk" style="width:86%"></div><div class="blk" style="width:52%"></div></div>
+        </div>
+        <div class="win" id="w-code" style="--x:5%;--y:12%;--w:54%;--h:64%;--z:2">
+          <div class="tb"><i></i><i></i><i></i><span>greet.ts — Code</span></div>
+<div class="codebody"><span class="n">1</span><span class="k">async function</span> <span class="f">greet</span>(id) {
+<span class="n">2</span>  <span class="k">const</span> user = <span class="f">fetchUser</span>(id)
+<span class="n">3</span>  <span class="k">return</span> <span class="s">`Hi, ${user.name}`</span>
+<span class="n">4</span>}
+<span class="n">5</span>
+<span class="n">6</span><span class="f">greet</span>(<span class="s">'ada'</span>).<span class="f">then</span>(console.log)</div>
+        </div>
+        <div class="win" id="w-notes" style="--x:58%;--y:40%;--w:30%;--h:44%;--z:0;--o:0;--s:.92">
+          <div class="tb"><i></i><i></i><i></i><span>Tokyo trip.md</span></div>
+          <div class="notes"><h4>Tokyo trip 🗼</h4><ul><li>Fly out Mar 14</li><li>Shibuya hotel, 4 nights</li><li>teamLab tickets ✓</li><li>Ramen list from Ken</li></ul></div>
+        </div>
+        <div class="ring" id="ring"></div>
+        <div class="np" id="np"><i></i><div>Late Night Coding<small>Spotify</small></div><div class="eq"><b></b><b></b><b></b></div></div>
+        <div class="dock"><img src="icon.png" alt=""><i style="--c:#2E7FB8"></i><i style="--c:#F4C76B"></i><i style="--c:#D9644E"></i><i style="--c:#1D1B18"></i><i style="--c:#B4508A"></i></div>
+      </div>
+      <div class="box" id="box" role="region" aria-label="Clover demo: drag or two-finger swipe it sideways to flick it away; pinch to minimize; hold space to talk">
+        <div class="bhead"><canvas id="orb" width="64" height="64"></canvas><span id="bstatus">Listening</span><span class="hint">flick me →</span></div>
+        <div class="q" id="bq"></div>
+        <div class="steps" id="bsteps"></div>
+        <div class="a" id="ba"></div>
+        <div class="acts" id="bacts"><button data-act="copy">Copy</button><button data-act="speak">Read aloud</button><button data-act="next">Ask another</button></div>
+      </div>
+    </div>
+    <div class="try">
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Drag or two-finger swipe the box away</span>
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 8l3 3M16 16l-3-3M8 8V5M8 8H5M16 16v3M16 16h3"/></svg>Pinch it small</span>
+      <span class="keys"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4"/></svg>Hold <kbd>space</kbd> to talk to it</span>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="ask">
+  <div class="wrap">
+    <div class="head reveal"><div class="eyebrow">Just ask</div><h2 class="display">Say it the way you’d say it to a friend.</h2>
+      <p class="lede">No commands to learn. Simple things happen instantly with no AI at all; bigger ones are worked out once, then remembered.</p></div>
+    <div class="asks">
+      <div class="ask reveal"><q>Code on my big screen, Chrome and Terminal on the laptop.</q><p>Arranges three windows across two displays.</p></div>
+      <div class="ask reveal" style="--d:60ms"><q>Find my notes about the Tokyo trip.</q><p>Searches your files by what’s inside them and opens the match on your other screen.</p></div>
+      <div class="ask reveal"><q>Reply to this. Thursday works, send me a time.</q><p>Reads the email on screen and writes the reply at your cursor. It never sends.</p></div>
+      <div class="ask reveal" style="--d:60ms"><q>Where do I turn on Night Shift?</q><p>A ring lights up the exact spot on your screen.</p></div>
+      <div class="ask reveal"><q>Find me a desk lamp under $30 on Amazon.</q><p>Works in Chrome behind your apps while a live mini screen shows you how it’s going.</p></div>
+      <div class="ask reveal" style="--d:60ms"><q>When I say focus mode, close Slack and open my to-do list.</q><p>Remembers it. Next time, two words do it all.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="features">
+  <div class="wrap">
+    <div class="head reveal"><div class="eyebrow">What it does</div><h2 class="display">A whole assistant. Not another chat window.</h2></div>
+    <div class="bento">
+      <div class="tile wide reveal">
+        <div class="art"><canvas class="bigorb" id="orb2" width="336" height="336" aria-hidden="true"></canvas></div>
+        <h3>Hands-free</h3>
+        <p>Say “Clover”, ask, and keep talking. It reads answers aloud and chimes when it’s your turn. Say “copy that”, “say that again” or “thanks Clover”.</p>
+      </div>
+      <div class="tile wide reveal" style="--d:60ms">
+        <div class="art"><div class="wave" aria-hidden="true"><b style="--i:0"></b><b style="--i:1"></b><b style="--i:2"></b><b style="--i:3"></b><b style="--i:4"></b><b style="--i:5"></b><b style="--i:6"></b><b style="--i:7"></b><b style="--i:8"></b></div></div>
+        <h3>Dictate anywhere</h3>
+        <p>Hold <kbd>fn</kbd>, talk, let go. Your words land in any text field, cleaned up, with the “um”s gone. Or word for word, on your Mac.</p>
+      </div>
+      <div class="tile reveal">
+        <div class="art"><div class="pointer" aria-hidden="true"><div class="t" style="top:22px"></div><div class="t" style="top:42px;right:60px"></div><div class="r"></div></div></div>
+        <h3>Sees your screen</h3>
+        <p>Ask about anything you’re looking at. Ask “where do I click?” and it points at the spot.</p>
+      </div>
+      <div class="tile reveal" style="--d:60ms">
+        <div class="art"><svg class="draw" viewBox="0 0 220 130" width="220" aria-hidden="true"><rect x="10" y="20" width="70" height="40" rx="10"/><rect x="140" y="70" width="70" height="40" rx="10" style="--d:.5s"/><path d="M80 40 C 120 40, 110 90, 140 90" style="--d:.9s"/><path d="M132 82 L140 90 L130 96" style="--d:1.3s"/><text x="22" y="45" style="--d:.3s">Mic</text><text x="150" y="95" style="--d:.8s">Speech</text></svg></div>
+        <h3>Draws to explain</h3>
+        <p>“Explain this and draw it” builds a labelled diagram right on your screen, step by step.</p>
+      </div>
+      <div class="tile reveal" style="--d:120ms">
+        <div class="art"><div class="agent" aria-hidden="true"><b>USB-C hubs under $40</b><div>Searched 3 stores</div><div>Compared 11 hubs</div><div class="now">Checking reviews</div></div></div>
+        <h3>Background agents</h3>
+        <p>Big jobs run behind your apps while you keep working. Routines run on a schedule.</p>
+      </div>
+      <div class="tile wide reveal">
+        <div class="art"><div class="chips" aria-hidden="true"><span class="chip g">Claude Code</span><span class="chip g">Antigravity</span><span class="chip">Claude API</span><span class="chip">OpenAI</span><span class="chip">Gemini</span><span class="chip">Azure</span><span class="chip">OpenRouter</span><span class="chip">Groq</span><span class="chip">Mistral</span><span class="chip">DeepSeek</span><span class="chip">xAI</span><span class="chip g">Ollama · local</span></div></div>
+        <h3>Any AI you already have</h3>
+        <p>Claude Code or Antigravity on the plan you pay for, your own key for nine providers, or a model running on your own Mac.</p>
+      </div>
+      <div class="tile wide reveal" style="--d:60ms">
+        <div class="art"><div class="speed" aria-hidden="true"><div>First time<i style="--w:100%"></i><span>3.8 s</span></div><div>Next time<i style="--w:6%"></i><span>0.2 s</span></div><div>Instant<i style="--w:2%"></i><span>no AI</span></div></div></div>
+        <h3>Learns as you go</h3>
+        <p>Ask for something new once and it works out the steps. Ask again and it runs in a blink, with no AI. Opening apps, moving windows and playing music never needed it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="gestures">
+  <div class="wrap">
+    <div class="head center reveal"><div class="eyebrow">Gestures</div><h2 class="display">Built to be touched.</h2>
+      <p class="lede">Clover answers your trackpad the way Apple’s own apps do: things follow your fingers, keep their speed when you let go, and can be caught again mid-flight.</p></div>
+    <div class="gest" id="gestgrid">
+      <div class="gc reveal"><div class="pad swipe"><div class="mini"></div><span class="f"></span><span class="f"></span></div><h3>Flick it away</h3><p>Two fingers sideways. Past a third of the way, or flicked, it flies off and closes.</p></div>
+      <div class="gc reveal" style="--d:60ms"><div class="pad pinch"><div class="mini"></div><span class="f"></span><span class="f"></span></div><h3>Pinch it small</h3><p>Tucks into a little bar with its live steps while Clover keeps working.</p></div>
+      <div class="gc reveal" style="--d:120ms"><div class="pad pull"><div class="mini"></div><span class="f"></span><span class="f"></span></div><h3>Pull it back</h3><p>Pull the bar down with two fingers, or pinch out, to open it again.</p></div>
+      <div class="gc reveal"><div class="pad force"><div class="mini"></div><span class="f"></span><div class="waves"><b></b><b></b><b></b></div></div><h3>Force click to hear</h3><p>Press harder on an answer. It sinks in with your finger and reads aloud.</p></div>
+      <div class="gc reveal" style="--d:60ms"><div class="pad down"><div class="mini"></div><span class="f"></span><span class="f"></span></div><h3>Swipe a card down</h3><p>Agent cards and ideas go with two fingers down: Later, or ✕.</p></div>
+      <div class="gc reveal" style="--d:120ms"><div class="pad pages"><div class="mini a"></div><div class="mini b"></div><span class="f"></span><span class="f"></span></div><h3>Turn the page</h3><p>Swipe between sections in Settings and steps in setup. The ends stretch and bounce back.</p></div>
+    </div>
+    <div class="feel">
+      <div class="reveal"><b>Momentum, not distance</b><p>A flick is judged by where it would land, so a quick short throw works as well as a long drag.</p></div>
+      <div class="reveal" style="--d:60ms"><b>Catch it mid-air</b><p>Put your fingers back while the box is springing and it stops right under them. Nothing jumps.</p></div>
+      <div class="reveal" style="--d:120ms"><b>Feel the click</b><p>On a Force Touch trackpad, a light tick when a gesture passes the point of no return, and one when it lands.</p></div>
+      <div class="reveal"><b>Rubber-band edges</b><p>Where there is nowhere to go, things stretch a little and come back instead of stopping dead.</p></div>
+      <div class="reveal" style="--d:60ms"><b>Scrolling stays scrolling</b><p>Only clearly sideways movement counts, and never over a table or code block that scrolls that way.</p></div>
+      <div class="reveal" style="--d:120ms"><b>Calm when you need it</b><p>With Reduce Motion on, every spring and flight becomes a quick fade.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="privacy">
+  <div class="wrap">
+    <div class="head reveal"><div class="eyebrow">Private by default</div><h2 class="display">Yours, on your Mac.</h2>
+      <p class="lede">Clover sends nothing anywhere except to the AI you picked. No account, no telemetry, nothing to sign up for.</p></div>
+    <div class="trust">
+      <div class="reveal"><b>Your voice stays here</b><p>Apple’s on-device speech turns your words into text. Audio never leaves your Mac, and the wake word is recognized locally.</p></div>
+      <div class="reveal" style="--d:60ms"><b>You choose how much it asks</b><p>Ask first before anything changes, Auto that only asks before deleting or buying, or Bypass. Every command is in the ask log.</p>
+        <div class="modes"><span>Ask first</span><span>Auto</span><span>Bypass</span></div></div>
+      <div class="reveal" style="--d:120ms"><b>Hard limits, always</b><p>In every mode, for every provider, <code style="background:rgba(255,255,255,.12)">rm</code>, <code style="background:rgba(255,255,255,.12)">sudo</code>, disk tools, shutdown and <code style="background:rgba(255,255,255,.12)">git push</code> stay blocked.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="download">
+  <div class="wrap">
+    <div class="head center reveal"><div class="eyebrow">Get Clover</div><h2 class="display">Free. On your Mac in a minute.</h2></div>
+    <div class="dl">
+      <div class="card main reveal">
+        <img src="icon.png" alt="">
+        <h3>Download the app</h3>
+        <p>Signed, zipped and checksummed by CI for every release. Unzip into Applications, then right-click → Open the first time.</p>
+        <a class="btn primary big" href="https://github.com/joinhackyard/clover/releases/latest" data-download>Download <span data-version></span> <span class="sub" data-size></span></a>
+      </div>
+      <div class="card reveal" style="--d:60ms">
+        <h3>One line in Terminal</h3>
+        <p>Checks your Mac, builds Clover.app, starts it at login and keeps it updated.</p>
+        <div class="cmd"><code>curl -fsSL https://raw.githubusercontent.com/joinhackyard/clover/main/install.sh | bash</code><button class="copy">Copy</button></div>
+      </div>
+      <div class="card reveal" style="--d:120ms">
+        <h3>Nix or source</h3>
+        <p>Run it with Nix, or clone it and build it yourself. It’s all in one Swift file and a Python brain.</p>
+        <div class="cmd"><code>nix run github:joinhackyard/clover</code><button class="copy">Copy</button></div>
+      </div>
+    </div>
+    <div class="needs"><span>macOS 26 or later</span><span>One AI: Claude Code, Antigravity, an API key, or Ollama</span><span>Apple’s command line tools for the script</span></div>
+    <p style="text-align:center;margin-top:28px"><a class="btn" href="docs.html">Read the docs →</a></p>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="icon.png" alt="">Clover</a>
+    <span>Made with 💚&nbsp;by <a href="https://hackyard.org">Hackyard</a>. MIT licensed.</span>
+    <nav aria-label="Footer"><a href="docs.html">Docs</a><a href="https://github.com/joinhackyard/clover">GitHub</a><a href="https://github.com/joinhackyard/clover/releases">Releases</a><a href="https://github.com/joinhackyard/clover/issues">Report a bug</a><a href="https://github.com/joinhackyard/clover/blob/main/SECURITY.md">Security</a></nav>
+  </div>
+</footer>
+
+<script type="module">
+  import { reduced, spring, project, rubber } from './site.js';
+  const $ = id => document.getElementById(id);
+
+  // ── The orb: the app's own renderer (orbs.js), painted here exactly as Clover paints it ──
+  let E = null;
+  try { E = await import('./orbs.js'); } catch {}
+  const dark = () => document.documentElement.dataset.theme ? document.documentElement.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  const orbs = [];
+  const orb = (canvas, state) => {
+    const S = canvas.width / 2, ctx = canvas.getContext('2d'), o = { canvas, ctx, S, state, preset: E?.r(state, S), level: 0, levels: [0, 0, 0, 0], t: Math.random() * 10 };
+    o.set = s => { if (s !== o.state) { o.state = s; o.preset = E?.r(s, S); } };
+    orbs.push(o); return o;
+  };
+  const head = orb($('orb'), 'listening'), big = orb($('orb2'), 'listening');
+  let last = performance.now();
+  (function tick(now) {
+    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    for (const o of orbs) {
+      if (!E || !o.visible) continue;
+      o.t += dt * (o.preset?.speed || 1) * (reduced.matches ? 0 : 1);
+      const live = o.state === 'listening' && !reduced.matches, goal = live ? o.voice?.(now) ?? 0 : 0;
+      o.levels = o.levels.map((l, k) => l + (goal * (.75 + .25 * Math.sin(o.t * 5.3 + k * 2.1)) - l) * Math.min(1, dt * 14));
+      o.ctx.setTransform(2, 0, 0, 2, 0, 0); o.ctx.clearRect(0, 0, o.S, o.S);
+      const lv = o.levels.reduce((a, b) => a + b, 0) / 4;
+      E.p(o.ctx, E.M[o.preset.mode](o.S, o.t, lv > .004 ? { ...o.preset.opts, level: lv, levels: o.levels } : o.preset.opts), dark(), null);
+    }
+    requestAnimationFrame(tick);
+  })(last);
+  const seenOrb = new IntersectionObserver(es => es.forEach(e => { const o = orbs.find(o => o.canvas === e.target); if (o) o.visible = e.isIntersecting; }));
+  orbs.forEach(o => seenOrb.observe(o.canvas));
+  // a voice-like level: syllables riding on a slower phrase
+  const speech = now => Math.max(0, .45 + .35 * Math.sin(now / 95) * Math.sin(now / 260) + .2 * Math.sin(now / 47));
+  big.voice = speech;
+
+  // ── The demo: Clover answering on a little Mac ──
+  const box = $('box'), q = $('bq'), steps = $('bsteps'), ans = $('ba'), acts = $('bacts'), status = $('bstatus'), ring = $('ring'), np = $('np');
+  const W = { code: $('w-code'), chrome: $('w-chrome'), notes: $('w-notes') };
+  const LAYOUTS = {
+    home:  { code: [5, 12, 54, 64, 2], chrome: [38, 22, 56, 62, 1], notes: [58, 40, 30, 44, 0, 0, .92] },
+    split: { code: [1, 6.5, 48.6, 78, 2], chrome: [50.4, 6.5, 48.6, 78, 1], notes: [58, 40, 30, 44, 0, 0, .92] },
+    notes: { code: [5, 12, 54, 64, 1], chrome: [38, 22, 56, 62, 0], notes: [30, 20, 40, 62, 3] },
+  };
+  const arrange = name => {
+    for (const [k, [x, y, w, h, z, o = 1, s = 1]] of Object.entries(LAYOUTS[name])) {
+      const st = W[k].style; st.setProperty('--x', x + '%'); st.setProperty('--y', y + '%'); st.setProperty('--w', w + '%'); st.setProperty('--h', h + '%');
+      st.setProperty('--z', z); st.setProperty('--o', o); st.setProperty('--s', s);
+    }
+    $('front').textContent = name === 'notes' ? 'Notes' : 'Code';
+  };
+  const EX = [
+    { q: 'Code on the left, Chrome on the right.', steps: ['Moving Code → left half', 'Moving Chrome → right half'], a: 'Done. Code is on the left, Chrome on the right.', at: 0, run: () => arrange('split') },
+    { q: 'Find my notes about the Tokyo trip.', steps: ['Searching your files for “Tokyo trip”', 'Opening Tokyo trip.md in Notes'], a: 'Found **Tokyo trip.md** in Documents and opened it.', at: 1, run: () => arrange('notes') },
+    { q: 'What’s wrong with this code?', steps: ['Looking at your screen'], a: 'Line 2 calls `fetchUser` without `await`, so `user` is still a Promise on line 3. Add `await` and it works.', at: 0, ai: true, run: () => {
+      arrange('home'); setTimeout(() => {   // once the window has settled: a ring around line 2, as Clover points on screen
+        const s = $('screen').getBoundingClientRect(), r = W.code.querySelectorAll('.codebody .n')[1].getBoundingClientRect();
+        ring.style.left = (r.left - s.left - r.height * .4) + 'px'; ring.style.top = (r.top - s.top + r.height / 2 - ring.offsetHeight / 2) + 'px'; ring.classList.add('on');
+      }, 450); } },
+    { q: 'Play my late night coding playlist.', steps: ['Spotify → Late Night Coding'], a: 'Playing **Late Night Coding** on Spotify.', at: 0, instant: true, run: () => np.classList.add('on') },
+  ];
+  // tiny markdown: **bold** and `code`, built as nodes
+  const words = (el, text, cls) => {
+    for (const part of text.split(/(\*\*[^*]+\*\*|`[^`]+`)/)) {
+      if (!part) continue;
+      const wrap = part.startsWith('**') ? document.createElement('b') : part.startsWith('`') ? document.createElement('code') : null;
+      const t = wrap ? part.slice(wrap.tagName === 'B' ? 2 : 1, wrap.tagName === 'B' ? -2 : -1) : part;
+      const pieces = t.split(/(\s+)/).filter(Boolean).map(w => { if (/^\s+$/.test(w)) return document.createTextNode(w); const s = document.createElement('span'); s.className = cls; s.textContent = w; return s; });
+      if (wrap) { wrap.append(...pieces); el.append(wrap); } else el.append(...pieces);
+    }
+    return [...el.querySelectorAll('.' + cls)];
+  };
+  let run = 0, paused = true, n = 0, said = '';   // starts once the little Mac is on screen
+  const sleep = ms => new Promise(r => setTimeout(r, reduced.matches ? Math.min(ms, 400) : ms));
+  const setStatus = (text, extra = '') => { status.textContent = text; if (extra) { const em = document.createElement('em'); em.textContent = ' · ' + extra; status.append(em); } };
+  const clear = () => { q.classList.remove('on'); q.textContent = ''; steps.textContent = ''; ans.textContent = ''; acts.classList.remove('on'); ring.classList.remove('on'); np.classList.remove('on'); };
+  const play = async (ex, me, heard = false) => {
+    const alive = () => me === run;
+    if (!heard) {
+      clear(); head.set('listening'); setStatus('Listening'); head.voice = speech; await sleep(700); if (!alive()) return;
+      q.classList.add('on'); const ws = words(q, ex.q, 'w'); ws.forEach(w => w.style.visibility = 'hidden');
+      for (const w of ws) { w.style.visibility = ''; await sleep(150 + Math.random() * 90); if (!alive()) return; }
+      await sleep(350); if (!alive()) return;
+    }
+    head.voice = null; const t0 = performance.now();
+    head.set(ex.instant ? 'working' : 'thinking'); setStatus(ex.instant ? 'Working' : 'Thinking');
+    for (const [i, s] of ex.steps.entries()) {
+      const row = document.createElement('div'); row.className = 'step'; const dot = document.createElement('i'); row.append(dot, s); steps.append(row);
+      if (i === ex.at) ex.run();
+      await sleep(ex.instant ? 260 : 620); if (!alive()) return; row.classList.add('ok');
+    }
+    head.set('speaking'); setStatus('Answering');
+    const ws = words(ans, ex.a, 'w'); ws.forEach(w => w.style.visibility = 'hidden'); said = ex.a.replace(/[*`]/g, '');
+    for (const w of ws) { w.style.visibility = ''; await sleep(38); if (!alive()) return; }
+    head.set('done'); setStatus('Done', ((performance.now() - t0) / 1000).toFixed(2) + ' s' + (ex.ai ? '' : ' · no AI')); acts.classList.add('on');
+    await sleep(4200); if (!alive() || paused) return;
+    next();
+  };
+  const next = () => { const me = ++run; if (!paused) play(EX[n++ % EX.length], me); };
+  new IntersectionObserver(([e]) => { const was = paused; paused = !e.isIntersecting; if (was && !paused && !box.dataset.gone) next(); }).observe($('screen'));
+  head.visible = true;
+
+  acts.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.act === 'copy') { navigator.clipboard?.writeText(said).catch(() => {}); b.textContent = 'Copied'; setTimeout(() => b.textContent = 'Copy', 1200); }
+    if (b.dataset.act === 'speak') readAloud();
+    if (b.dataset.act === 'next') { arrange('home'); next(); }
+  });
+  const readAloud = () => {
+    if (!('speechSynthesis' in window) || !said) return;
+    if (speechSynthesis.speaking) { speechSynthesis.cancel(); head.set('done'); return; }
+    const u = new SpeechSynthesisUtterance(said); u.rate = 1.05; head.set('speaking'); u.onend = () => head.set('done'); speechSynthesis.speak(u);
+  };
+
+  // Hold space to talk: the leaves answer a pretend voice, let go and Clover takes the next example from "what you said"
+  let holding = false;
+  addEventListener('keydown', e => {
+    if (e.code !== 'Space' || e.repeat || e.target.closest?.('input, textarea, button, a, [contenteditable]') || box.dataset.gone) return;
+    const r = box.getBoundingClientRect(); if (r.bottom < 0 || r.top > innerHeight) return;
+    e.preventDefault(); holding = true; run++; clear(); unfold(); arrange('home'); head.set('listening'); setStatus('Listening'); head.voice = speech;
+  });
+  addEventListener('keyup', async e => {
+    if (e.code !== 'Space' || !holding) return;
+    holding = false; const me = ++run, ex = EX[n++ % EX.length];
+    q.classList.add('on'); words(q, ex.q, 'w'); await sleep(300); if (me === run) play(ex, me, true);
+  });
+
+  // ── Gestures on the demo box: the same physics as the app ──
+  // Direct manipulation: 1:1 with the pointer from where it was grabbed. Release: projected momentum decides; the spring starts at the
+  // pointer's speed (X and Y on their own springs). Caught mid-flight: it stops under the finger. Gone one way, it comes back that way.
+  const G = { x: 0, y: 0, sx: null, sy: null, trail: [], wheel: false, idle: 0, scale: 1, armed: false };
+  let springX = null, springY = null;
+  const paint = () => {
+    const w = box.offsetWidth, x = G.x;
+    box.style.transform = x || G.y || G.scale !== 1 ? `translate(${x}px, ${G.y}px) rotate(${x / w * 3}deg) scale(${G.scale})` : '';
+    box.style.opacity = x ? String(1 - Math.min(.85, Math.abs(x) / w * 1.1)) : '';
+  };
+  const speed = () => { const t = G.trail, a = t[0], b = t[t.length - 1]; return t.length > 1 && b[0] - a[0] > 4 ? [(b[1] - a[1]) / (b[0] - a[0]) * 1000, (b[2] - a[2]) / (b[0] - a[0]) * 1000] : [0, 0]; };
+  const track = () => { const now = performance.now(); G.trail.push([now, G.x, G.y]); while (G.trail.length > 2 && now - G.trail[0][0] > 90) G.trail.shift(); };
+  const tick = () => navigator.vibrate?.(8);
+  const grab = () => { springX?.stop(); springY?.stop(); springX = springY = null; G.trail = []; box.classList.add('grabbing'); };
+  const letGo = () => {
+    box.classList.remove('grabbing');
+    const [vx, vy] = speed(), w = box.offsetWidth, landing = G.x + project(vx), away = Math.abs(landing) > w * .35 && !box.classList.contains('folded');
+    springY = spring({ from: G.y, to: 0, v: vy, response: .38, damping: 1, update: y => { G.y = y; paint(); } });
+    if (reduced.matches) { G.x = 0; G.y = 0; paint(); if (away) { box.style.opacity = '0'; setTimeout(() => box.style.opacity = '', 500); } return; }
+    if (!away) { springX = spring({ from: G.x, to: 0, v: vx, response: .4, damping: .72, update: x => { G.x = x; paint(); } }); return; }
+    const dir = Math.sign(landing); tick(); box.dataset.gone = '1'; run++;
+    springX = spring({ from: G.x, to: dir * (w + innerWidth * .2), v: vx, response: .32, damping: 1, update: x => { G.x = x; paint(); }, done: () => {
+      box.style.visibility = 'hidden';
+      setTimeout(() => {   // back from where it left, settling with a touch of bounce
+        box.style.visibility = ''; delete box.dataset.gone; G.x = dir * w * .9; paint(); arrange('home'); next();
+        springX = spring({ from: G.x, to: 0, v: -dir * 900, response: .45, damping: .8, update: x => { G.x = x; paint(); } });
+      }, 900);
+    } });
+  };
+  // Pointer: mouse, pen and touch. A small movement first decides it's a drag, so buttons and taps still work.
+  box.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || box.dataset.gone || e.target.closest('button')) return;
+    const from = springX?.running || springY?.running; grab();
+    G.sx = e.clientX - G.x; G.sy = e.clientY - G.y; G.pid = e.pointerId; G.drag = !!from;
+    if (from) try { box.setPointerCapture(e.pointerId); } catch {}
+  });
+  box.addEventListener('pointermove', e => {
+    if (G.sx === null || e.pointerId !== G.pid) return;
+    const dx = e.clientX - G.sx, dy = e.clientY - G.sy;
+    if (!G.drag) { if (Math.hypot(dx - G.x, dy - G.y) < 5) return; G.drag = true; try { box.setPointerCapture(e.pointerId); } catch {} }
+    G.x = box.classList.contains('folded') ? rubber(dx, 40) : dx; G.y = rubber(dy, 50); track();
+    const armed = Math.abs(G.x) > box.offsetWidth * .35; if (armed !== G.armed) { G.armed = armed; if (armed) tick(); }
+    paint();
+  });
+  const up = e => { if (G.sx === null || e.pointerId !== G.pid) return; G.sx = G.sy = null; box.classList.remove('grabbing'); if (G.drag) { G.drag = false; letGo(); } else if (box.classList.contains('folded')) unfold(); };
+  box.addEventListener('pointerup', up); box.addEventListener('pointercancel', up);
+  // Two fingers on a trackpad, and pinches (ctrl+wheel; Safari's gesture events)
+  const fold = on => { box.classList.toggle('folded', on); tick(); };
+  const unfold = () => box.classList.contains('folded') && fold(false);
+  const wheelEnd = () => {
+    if (G.wheel === 'swipe') { G.wheel = false; letGo(); }
+    else if (G.wheel === 'pinch') { G.wheel = false; const s = G.scale; if (!box.classList.contains('folded') && s < .9) fold(true); else if (box.classList.contains('folded') && s > 1.08) fold(false);
+      springX = spring({ from: G.scale, to: 1, response: .35, damping: .75, update: k => { G.scale = k; paint(); } }); }
+    else G.wheel = false;
+    G.acc = 0;
+  };
+  box.addEventListener('wheel', e => {
+    if (box.dataset.gone) return;
+    clearTimeout(G.idle); G.idle = setTimeout(wheelEnd, 140);
+    if (e.ctrlKey) { e.preventDefault(); if (G.wheel !== 'pinch') { grab(); G.wheel = 'pinch'; } G.scale = Math.min(1.12, Math.max(.7, G.scale * Math.exp(-e.deltaY / 220))); paint(); return; }
+    const natural = e.webkitDirectionInvertedFromDevice !== false, fx = natural ? -e.deltaX : e.deltaX;
+    if (!G.wheel) { G.acc = (G.acc || 0) + Math.abs(e.deltaX) - Math.abs(e.deltaY); if (G.acc < 6 && Math.abs(e.deltaX) <= Math.abs(e.deltaY) * 1.5) { if (Math.abs(e.deltaY) > 4) G.wheel = 'scroll'; return; }
+      if (box.classList.contains('folded')) { G.wheel = 'scroll'; return; } grab(); G.wheel = 'swipe'; }
+    if (G.wheel !== 'swipe') return;
+    e.preventDefault(); G.x += fx; track();
+    const armed = Math.abs(G.x) > box.offsetWidth * .35; if (armed !== G.armed) { G.armed = armed; if (armed) tick(); }
+    paint();
+  }, { passive: false });
+  box.addEventListener('gesturestart', e => { e.preventDefault(); grab(); G.wheel = 'pinch'; });
+  box.addEventListener('gesturechange', e => { e.preventDefault(); G.scale = Math.min(1.12, Math.max(.7, e.scale)); paint(); });
+  box.addEventListener('gestureend', e => { e.preventDefault(); wheelEnd(); });
+  // Force click (Safari on a Force Touch trackpad): the answer sinks in with the pressure, then reads aloud
+  box.addEventListener('webkitmouseforcewillbegin', e => e.preventDefault());
+  box.addEventListener('webkitmouseforcechanged', e => { if (!reduced.matches) ans.style.transform = `scale(${1 - Math.min(1, Math.max(0, e.webkitForce - 1)) * .03})`; });
+  box.addEventListener('webkitmouseforcedown', () => readAloud());
+  box.addEventListener('webkitmouseforceup', () => { ans.style.transition = 'transform .4s var(--spring-soft)'; ans.style.transform = ''; setTimeout(() => ans.style.transition = '', 420); });
+
+  // the clock in the menu bar is real
+  const clock = () => $('clock').textContent = new Date().toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+  clock(); setInterval(clock, 15000);
+
+  // gesture illustrations loop only while they are on screen
+  const grid = $('gestgrid');
+  new IntersectionObserver(([e]) => grid.classList.toggle('playing', e.isIntersecting && !reduced.matches), { threshold: .15 }).observe(grid);
+  // the bento's little animations start as their tile arrives (.in comes from site.js)
+</script>
+</body>
+</html>

@@ -29,6 +29,8 @@ CLAUDE.local.md
 .claude/
 .cursor/
 index.html
+# except the GitHub Pages landing page (.github/workflows/pages.yml publishes docs/)
+!docs/index.html
 docs/clover-film.mp4
 docs/film-poster.png
 

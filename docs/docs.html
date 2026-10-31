@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Clover Docs</title>
+<meta name="description" content="How to install, set up and use Clover, the free open-source voice assistant for macOS: shortcuts, hands-free, gestures, dictation, AI providers, permissions and privacy.">
+<meta name="theme-color" content="#F7F3EA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141311" media="(prefers-color-scheme: dark)">
+<meta property="og:title" content="Clover Docs">
+<meta property="og:image" content="https://joinhackyard.github.io/clover/social-preview.png">
+<link rel="icon" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap">
+<link rel="stylesheet" href="site.css">
+<style>
+  .docs { display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 56px; padding-top: 40px; }
+  .side { position: sticky; top: 88px; align-self: start; max-height: calc(100vh - 110px); overflow-y: auto; padding-bottom: 24px; scrollbar-width: thin; }
+  .side h6 { margin: 22px 0 6px; padding-left: 12px; font: 600 12px var(--font); letter-spacing: .02em; color: var(--ink-3); }
+  .side h6:first-child { margin-top: 0; }
+  .side a { position: relative; display: block; padding: 6px 12px; border-radius: 10px; font-size: 14.5px; color: var(--ink-2); text-decoration: none; transition: color .15s ease, background-color .15s ease; }
+  .side a:hover { color: var(--ink); background: var(--fill); }
+  .side a.on { color: var(--accent-ink); background: var(--accent-soft); font-weight: 600; }
+  article { max-width: 720px; padding-bottom: 40px; }
+  article > header h1 { margin: 0; font-size: clamp(40px, 6vw, 64px); }
+  article > header p { margin: 16px 0 0; }
+  article section { padding-top: 56px; }
+  article h2 { margin: 0 0 14px; font: 800 clamp(26px, 3.2vw, 34px)/1.15 var(--display); letter-spacing: -.025em; }
+  article h3 { margin: 28px 0 8px; font: 800 19px/1.3 var(--display); letter-spacing: -.01em; }
+  article p, article li { color: var(--ink-2); font-size: 16px; line-height: 1.65; }
+  article p { margin: 10px 0; } article ul, article ol { padding-left: 20px; margin: 10px 0; } article li { margin: 4px 0; }
+  article strong { color: var(--ink); font-weight: 600; }
+  article a { color: var(--accent-ink); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  .anchor { margin-left: 8px; color: var(--ink-3); text-decoration: none !important; opacity: 0; transition: opacity .15s ease; font-weight: 600; }
+  h2:hover .anchor, h3:hover .anchor { opacity: 1; }
+  table { width: 100%; margin: 16px 0; border-collapse: separate; border-spacing: 0; font-size: 14.5px; border-radius: 14px; overflow: hidden; box-shadow: var(--shadow-sm); background: var(--surface); }
+  th, td { padding: 11px 14px; text-align: left; vertical-align: top; border-bottom: .5px solid var(--line); color: var(--ink-2); line-height: 1.5; }
+  th { font-weight: 600; color: var(--ink); background: var(--fill); font-size: 13px; }
+  tr:last-child td { border-bottom: 0; } td:first-child { color: var(--ink); font-weight: 500; }
+  .tablewrap { overflow-x: auto; margin: 16px -4px; padding: 0 4px; } .tablewrap table { margin: 0; min-width: 520px; }
+  .note { margin: 18px 0; padding: 14px 18px; border-radius: 14px; background: var(--accent-soft); color: var(--ink); font-size: 15px; line-height: 1.55; }
+  .note.warn { background: color-mix(in oklab, var(--sun) 22%, transparent); }
+  .note b { color: var(--ink); }
+  pre { margin: 14px 0; padding: 0; } .cmd { margin: 14px 0; }
+  .steps-list { counter-reset: s; list-style: none; padding: 0; } .steps-list li { counter-increment: s; position: relative; padding-left: 40px; margin: 14px 0; }
+  .steps-list li::before { content: counter(s); position: absolute; left: 0; top: 1px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--on-accent); font: 700 13px var(--font); }
+  .faq details { border-bottom: .5px solid var(--line-2); padding: 4px 0; }
+  .faq summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; font: 700 17px/1.35 var(--display); color: var(--ink); }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after { content: ""; flex: none; width: 9px; height: 9px; border: solid var(--ink-3); border-width: 0 2px 2px 0; transform: rotate(45deg) translateY(-3px); transition: transform .25s var(--ease); }
+  .faq details[open] summary::after { transform: rotate(-135deg) translateY(-2px); }
+  .faq details > div { padding: 0 0 14px; }
+  .mobile-toc { display: none; }
+  @media (max-width: 900px) {
+    .docs { grid-template-columns: 1fr; gap: 0; padding-top: 16px; }
+    .side { display: none; }
+    .mobile-toc { display: flex; gap: 6px; overflow-x: auto; position: sticky; top: 64px; z-index: 10; margin: 0 calc(var(--gutter) * -1); padding: 10px var(--gutter);
+      background: var(--glass); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: 0 .5px 0 var(--line); scrollbar-width: none; }
+    .mobile-toc::-webkit-scrollbar { display: none; }
+    .mobile-toc a { flex: none; padding: 7px 12px; border-radius: 999px; background: var(--fill-2); font-size: 13.5px; font-weight: 500; color: var(--ink-2); text-decoration: none; }
+    .mobile-toc a.on { background: var(--accent); color: var(--on-accent); }
+  }
+</style>
+</head>
+<body>
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="icon.png" alt="">Clover <small>Docs</small></a>
+    <nav class="nav-links" aria-label="Site">
+      <a href="./#features">Features</a><a href="./#gestures">Gestures</a><a href="docs.html" aria-current="page">Docs</a><a href="https://github.com/joinhackyard/clover">GitHub</a>
+    </nav>
+    <a class="btn primary" href="https://github.com/joinhackyard/clover/releases/latest" data-download>Download</a>
+  </div>
+</header>
+
+<div class="wrap docs">
+  <aside class="side" aria-label="Contents">
+    <h6>Start</h6>
+    <a href="#install">Install</a><a href="#first-run">First run</a><a href="#ai">Choose your AI</a>
+    <h6>Using Clover</h6>
+    <a href="#shortcut">The shortcut and the box</a><a href="#hands-free">Hands-free</a><a href="#gestures">Gestures</a><a href="#dictate">Dictate anywhere</a><a href="#point">Point and draw</a>
+    <a href="#agents">Agents, routines and watching</a><a href="#meetings">Meeting Copilot</a><a href="#memory">Memory and learning</a>
+    <h6>Trust</h6>
+    <a href="#permissions">Permissions and safety</a><a href="#privacy">Privacy</a>
+    <h6>More</h6>
+    <a href="#updates">Updates and uninstall</a><a href="#source">Build from source</a><a href="#faq">Troubleshooting</a>
+  </aside>
+
+  <article>
+    <nav class="mobile-toc" aria-label="Contents">
+      <a href="#install">Install</a><a href="#ai">AI</a><a href="#shortcut">Shortcut</a><a href="#hands-free">Hands-free</a><a href="#gestures">Gestures</a><a href="#dictate">Dictate</a><a href="#point">Point</a><a href="#agents">Agents</a><a href="#meetings">Meetings</a><a href="#permissions">Safety</a><a href="#privacy">Privacy</a><a href="#faq">Help</a>
+    </nav>
+    <header>
+      <div class="eyebrow">Documentation</div>
+      <h1 class="display">Clover, start to finish.</h1>
+      <p class="lede">Everything you need to install Clover, pick an AI, and get the most out of your voice, your trackpad and your screen.</p>
+    </header>
+
+    <section id="install">
+      <h2>Install</h2>
+      <p>You need <strong>macOS 26</strong> or later (Clover uses Apple’s new on-device speech) and one AI: Claude Code on a Claude plan, the Antigravity CLI on your Google plan, an API key, or Ollama.</p>
+      <h3>Download the app</h3>
+      <ol class="steps-list">
+        <li>Download <a href="https://github.com/joinhackyard/clover/releases/latest" data-download>the latest <code>Clover-vX.Y.Z-macOS.zip</code></a>. Each release also carries a <code>.sha256</code> checksum.</li>
+        <li>Unzip it and move <strong>Clover.app</strong> into <code>~/Applications</code>.</li>
+        <li>The build is signed ad hoc, not notarized, so the first time right-click it and choose <strong>Open</strong>, or run:</li>
+      </ol>
+      <div class="cmd"><code>xattr -dr com.apple.quarantine ~/Applications/Clover.app</code><button class="copy">Copy</button></div>
+      <h3>Or install with one line</h3>
+      <p>This checks your Mac, downloads Clover to <code>~/.clover</code>, builds <code>~/Applications/Clover.app</code>, starts it at login and keeps it updated. It needs Apple’s command line tools (<code>xcode-select --install</code>).</p>
+      <div class="cmd"><code>curl -fsSL https://raw.githubusercontent.com/joinhackyard/clover/main/install.sh | bash</code><button class="copy">Copy</button></div>
+      <h3>Nix</h3>
+      <div class="cmd"><code>nix run github:joinhackyard/clover</code><button class="copy">Copy</button></div>
+      <p>Run it again to update. Nix installs show this update path in Settings instead of Clover’s own updater.</p>
+    </section>
+
+    <section id="first-run">
+      <h2>First run</h2>
+      <p>The first launch opens a short setup that checks your AI and walks through each macOS permission one at a time: Microphone, Speech Recognition, Accessibility (to move windows and type), Screen Recording (to see what you’re asking about) and, if you want them, Calendars and Automation.</p>
+      <p>Two fingers sideways turn the page in setup, the same as Back and Continue. You can reopen setup from the menu bar any time.</p>
+    </section>
+
+    <section id="ai">
+      <h2>Choose your AI</h2>
+      <p>Settings → Intelligence → <strong>AI provider</strong>. <strong>Test connection</strong> makes one tiny real call and tells you exactly what’s wrong: a bad key, a wrong deployment, an unreachable server.</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Provider</th><th>What you enter</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Claude Code (default)</td><td>Nothing: your Claude plan sign-in</td><td>Background agents, connectors and routines run here.</td></tr>
+          <tr><td>Antigravity</td><td>Nothing: your Google sign-in</td><td>Runs the <code>agy</code> CLI headless. Clover’s safety gate is its <code>PreToolUse</code> hook; without it Clover only answers, never acts.</td></tr>
+          <tr><td>Claude API</td><td>Anthropic key</td><td>Haiku for quick asks, Sonnet for real work. Uses prompt caching.</td></tr>
+          <tr><td>OpenAI</td><td>Key, optional base URL</td><td><strong>Load models</strong> lists your chat models.</td></tr>
+          <tr><td>Azure OpenAI</td><td>Endpoint, key, deployment, API version</td><td>Classic deployment URLs, or <code>v1</code> for the Foundry v1 API.</td></tr>
+          <tr><td>Google Gemini</td><td>Gemini key</td><td>Flash for quick asks, Pro for work.</td></tr>
+          <tr><td>OpenRouter · Groq · Mistral · DeepSeek · xAI</td><td>That service’s key</td><td>Sensible defaults; change them or load the list.</td></tr>
+          <tr><td>Ollama</td><td>Nothing (local)</td><td>Talks to <code>localhost:11434</code>. Pick a model you’ve pulled.</td></tr>
+          <tr><td>Custom</td><td>Base URL, key, model, format</td><td>Any OpenAI-compatible server (LM Studio, vLLM…) or Anthropic Messages.</td></tr>
+        </tbody>
+      </table></div>
+      <p><strong>Cheapest</strong> keeps every ask on the fast model, <strong>Balanced</strong> moves long jobs to the work model, <strong>Most capable</strong> always uses the work model. You can also switch from the model chip in the box.</p>
+      <div class="note">Keys stay in <code>~/.config/clover/settings.json</code> (owner-only, mode 0600) and only go to the provider you chose.</div>
+    </section>
+
+    <section id="shortcut">
+      <h2>The shortcut and the box</h2>
+      <p>Hold <kbd>⌃</kbd> <kbd>⌥</kbd> <kbd>space</kbd>, talk, and let go. Choose <strong>Hold to talk</strong> or <strong>Press to toggle</strong> in Settings → General → Shortcut behavior, or record your own shortcut.</p>
+      <ul>
+        <li>Pressing the shortcut while Clover answers stops it; while it’s speaking, it stops the voice. <kbd>esc</kbd> cancels listening without sending.</li>
+        <li>Hover the box and a typing field grows in; type instead of talking whenever you like. Press <kbd>↑</kbd> in an empty field to recall your last request.</li>
+        <li>Click an answer to copy it. Click your request to edit it and ask again.</li>
+        <li>Under every answer: <strong>Copy</strong>, <strong>Read aloud</strong> and <strong>Follow up</strong>. Code blocks get their own Copy button; links become chips with their site.</li>
+        <li>Drag the box anywhere; drag an edge to resize it. While Clover works in a covered window, another Space or another display, a live mini screen shows that window.</li>
+      </ul>
+    </section>
+
+    <section id="hands-free">
+      <h2>Hands-free</h2>
+      <p>Turn on <strong>Wake word</strong> in Settings → General → Hands-free (it’s off by default). The word is “Clover” unless you type your own; say it with or without “hey”. A little chirp means it’s listening. Speech is recognized on your Mac only, and macOS shows the orange mic dot while the wake word is on.</p>
+      <p>After each answer Clover listens again, reads answers aloud (Settings → <strong>Read answers aloud in hands-free chats</strong>) and plays a soft chime when it’s your turn. Clicking other apps never closes a hands-free chat.</p>
+      <h3>Voice commands</h3>
+      <p>These never reach the AI:</p>
+      <table>
+        <thead><tr><th>Say</th><th>Clover</th></tr></thead>
+        <tbody>
+          <tr><td>“stop”, “cancel”, “that’s all”, “thanks Clover”, “bye”</td><td>Ends the hands-free chat</td></tr>
+          <tr><td>“copy that”</td><td>Copies the last answer</td></tr>
+          <tr><td>“say that again”, “repeat that”</td><td>Reads the last answer again</td></tr>
+          <tr><td>“be quiet”, “shush”</td><td>Stops talking and listening until you say “Clover”</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="gestures">
+      <h2>Gestures</h2>
+      <p>Clover answers the trackpad the way Apple’s own apps do. Turn gestures off in Settings → General → Gestures.</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Where</th><th>Gesture</th><th>What happens</th></tr></thead>
+        <tbody>
+          <tr><td>The box</td><td>Two fingers sideways</td><td>The box follows. Past a third of its width, or flicked, it flies off and closes. Short of that it springs home.</td></tr>
+          <tr><td>The box</td><td>Pinch in</td><td>Tucks into the small bar with its live steps.</td></tr>
+          <tr><td>The small bar</td><td>Pinch out, or pull down with two fingers</td><td>Opens the full box again.</td></tr>
+          <tr><td>An answer</td><td>Force click</td><td>Presses in with your finger and reads the answer aloud.</td></tr>
+          <tr><td>An agent card or idea</td><td>Two fingers down</td><td>Its quiet choice: Later, or ✕.</td></tr>
+          <tr><td>Settings</td><td>Two fingers sideways</td><td>The next or previous section. The ends stretch and bounce back.</td></tr>
+          <tr><td>Setup</td><td>Two fingers sideways</td><td>Back, or on to the next step.</td></tr>
+        </tbody>
+      </table></div>
+      <h3>How it feels</h3>
+      <ul>
+        <li><strong>Momentum counts.</strong> A flick is judged by where its momentum would land, not where your fingers stopped, and the spring starts at the speed you let go.</li>
+        <li><strong>You can catch it.</strong> Fingers back on the trackpad while the box is springing, and it stops right there under them.</li>
+        <li><strong>The trackpad ticks</strong> on a Force Touch trackpad when a gesture passes its point of no return, and again when it lands.</li>
+        <li><strong>Edges stretch.</strong> Where there’s nowhere to go, things give a little and come back instead of stopping dead.</li>
+        <li><strong>Scrolling stays scrolling.</strong> Only clearly sideways (or, on a card, clearly downward) movement counts, never over a table or code block that scrolls that way.</li>
+        <li><strong>Reduce Motion</strong> turns every spring and flight into a quick fade.</li>
+      </ul>
+    </section>
+
+    <section id="dictate">
+      <h2>Dictate anywhere</h2>
+      <p>Hold <kbd>fn</kbd> to talk, let go to insert. Double-tap to lock it on. Your words land in whatever text field has the cursor.</p>
+      <ul>
+        <li><strong>Verbatim</strong> types Apple’s on-device transcript, with no AI.</li>
+        <li><strong>Clean up</strong> makes one quick AI pass that keeps your words, fixes what it clearly misheard, drops the “um”s, honours “scratch that” and turns “new line” into formatting. It never answers or acts on what you dictate.</li>
+        <li>For other languages pick <strong>Whisper</strong> in Settings → General → Speech model. It runs <a href="https://github.com/ggml-org/whisper.cpp">whisper.cpp</a> on your Mac.</li>
+      </ul>
+      <p>Settings → Dictation keeps a searchable history and your own words, so names and jargon come out right.</p>
+    </section>
+
+    <section id="point">
+      <h2>Point and draw</h2>
+      <p>Click <strong>Point at your screen</strong> next to the mic, then click, circle or scribble on anything and ask about it. The other way round, ask “where do I…?” and a ring lights up the spot, or ask “explain this and draw it” and Clover draws boxes, arrows and labels over your screen one step at a time, like a whiteboard.</p>
+    </section>
+
+    <section id="agents">
+      <h2>Agents, routines and watching</h2>
+      <p>Ask for something big (“find me USB-C hubs under $40”) and Clover hands it to a background agent while you keep working. A chip shows its live steps; the Agents window has the full report.</p>
+      <ul>
+        <li><strong>Routines:</strong> “every weekday at 8, summarize my calendar”.</li>
+        <li><strong>Watching:</strong> “tell me when the build is done” watches a window with no AI while it waits.</li>
+      </ul>
+      <p>Agents and routines run on Claude Code.</p>
+    </section>
+
+    <section id="meetings">
+      <h2>Meeting Copilot</h2>
+      <p>Enable it in Settings → Meetings. You get live answers during calls, local transcripts in <code>~/.config/clover/meetings/</code>, and a recap afterwards: by your AI, or fully on your Mac if you turn AI summaries off.</p>
+    </section>
+
+    <section id="memory">
+      <h2>Memory and learning</h2>
+      <p>Say “remember…” and every ask after that knows it. Settings → Memory shows and edits what Clover remembers.</p>
+      <p>Ask for something new once and Clover works out the steps; ask again and it runs in a blink, with no AI. Opening apps, moving windows, playing music and web searches never need AI at all. Teach it phrases too: “when I say focus mode, close Slack and open my to-do list.”</p>
+    </section>
+
+    <section id="permissions">
+      <h2>Permissions and safety</h2>
+      <p>Settings → Account &amp; Access → <strong>Safety</strong> has three modes:</p>
+      <table>
+        <thead><tr><th>Mode</th><th>What Clover does</th></tr></thead>
+        <tbody>
+          <tr><td>Ask first (default)</td><td>Shows an Allow card before anything deletes, sends, buys, runs a program or changes a file.</td></tr>
+          <tr><td>Auto</td><td>Acts on its own and only asks before deleting or buying.</td></tr>
+          <tr><td>Bypass permissions</td><td>Never asks.</td></tr>
+        </tbody>
+      </table>
+      <div class="note"><b>Always blocked:</b> in every mode, for every provider, <code>rm</code>, <code>sudo</code>, disk tools, shutdown and <code>git push</code>. Every exact command Clover runs is in the ask log.</div>
+      <p>Calendar changes show the old and new time on a card first. Adding is immediate; moving or deleting asks. Replies Clover writes go at your cursor. It never sends them.</p>
+    </section>
+
+    <section id="privacy">
+      <h2>Privacy</h2>
+      <ul>
+        <li>Apple’s on-device speech turns your voice into text. Audio never leaves your Mac.</li>
+        <li>Clover sends nothing anywhere except to the AI you chose.</li>
+        <li>No account, no telemetry. Anonymous usage counts exist only in builds that set <code>CLOVER_POSTHOG_KEY</code>; the releases here don’t.</li>
+        <li>Meeting transcripts, memory and settings live in <code>~/.config/clover</code>.</li>
+      </ul>
+    </section>
+
+    <section id="updates">
+      <h2>Updates and uninstall</h2>
+      <p>Clover starts at login and updates itself when it’s idle. Turn that off in Settings → About &amp; Updates. Every version bump on <code>main</code> is built by CI and published to <a href="https://github.com/joinhackyard/clover/releases">Releases</a>.</p>
+      <h3>Remove Clover</h3>
+      <div class="cmd"><code>launchctl bootout gui/$(id -u)/org.hackyard.clover</code><button class="copy">Copy</button></div>
+      <p>Then delete <code>~/Applications/Clover.app</code>, <code>~/.clover</code>, <code>~/.config/clover</code> and <code>~/Library/LaunchAgents/org.hackyard.clover.plist</code>.</p>
+    </section>
+
+    <section id="source">
+      <h2>Build from source</h2>
+      <div class="cmd"><code>git clone https://github.com/joinhackyard/clover.git &amp;&amp; cd clover &amp;&amp; ./build.sh</code><button class="copy" data-copy="git clone https://github.com/joinhackyard/clover.git && cd clover && ./build.sh">Copy</button></div>
+      <ul>
+        <li><code>Clover.swift</code>: the app. Hotkey, wake word, speech, overlay, sounds, gestures, windows.</li>
+        <li><code>clover.py</code>: the brain. Instant commands, the system prompt, helpers for windows, web and screen, and the safety gate.</li>
+        <li><code>clover_engine.py</code>: Clover’s own model engine for API keys.</li>
+        <li><code>ui/</code>: the overlay, setup, Settings, agents and meeting pages, the orb and the sound pack.</li>
+      </ul>
+      <p>Run the offline checks with <code>python3 -m unittest discover -s tests</code>. For the pages, serve the repo with <code>python3 -m http.server</code> and open <code>tests/ui.html</code>: it uses a mock bridge and makes no Mac actions or AI calls. See <a href="https://github.com/joinhackyard/clover/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>.</p>
+    </section>
+
+    <section id="faq" class="faq">
+      <h2>Troubleshooting</h2>
+      <details><summary>macOS says Clover “can’t be opened”</summary><div><p>Release builds are signed ad hoc, not notarized. Right-click Clover.app → Open once, or run <code>xattr -dr com.apple.quarantine ~/Applications/Clover.app</code>.</p></div></details>
+      <details><summary>Clover can’t move windows or type</summary><div><p>Grant <strong>Accessibility</strong> in System Settings → Privacy &amp; Security. If Clover is already listed, switch it off and on again after an update.</p></div></details>
+      <details><summary>It can’t see my screen</summary><div><p>Grant <strong>Screen Recording</strong> in System Settings → Privacy &amp; Security, then quit and reopen Clover.</p></div></details>
+      <details><summary>The wake word doesn’t hear me</summary><div><p>Check Settings → General → Hands-free is on and the right microphone is chosen. Clover only opens the mic you pick, so Bluetooth headphones stay out of call mode.</p></div></details>
+      <details><summary>My API key doesn’t work</summary><div><p>Use <strong>Test connection</strong> in Settings → Intelligence. It names the problem: a wrong key, deployment, model or base URL.</p></div></details>
+      <details><summary>Gestures don’t do anything</summary><div><p>Make sure Settings → General → Gestures is on. Swipes only count when they’re clearly sideways and not over something that scrolls sideways, like a wide table or code block.</p></div></details>
+      <details><summary>Where do I report a bug?</summary><div><p>Settings → Report feedback prepares an issue for you, or open one on <a href="https://github.com/joinhackyard/clover/issues">GitHub</a>. Security issues go through <a href="https://github.com/joinhackyard/clover/blob/main/SECURITY.md">SECURITY.md</a>.</p></div></details>
+    </section>
+  </article>
+</div>
+
+<footer class="foot">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="icon.png" alt="">Clover</a>
+    <span>Made with 💚&nbsp;by <a href="https://hackyard.org">Hackyard</a>. MIT licensed.</span>
+    <nav aria-label="Footer"><a href="./">Home</a><a href="https://github.com/joinhackyard/clover">GitHub</a><a href="https://github.com/joinhackyard/clover/releases">Releases</a><a href="https://github.com/joinhackyard/clover/issues">Report a bug</a></nav>
+  </div>
+</footer>
+
+<script type="module">
+  import './site.js';
+  // Anchors on every heading, and the contents follow the section you're reading
+  document.querySelectorAll('article section > h2').forEach(h => {
+    const a = document.createElement('a'); a.className = 'anchor'; a.href = '#' + h.parentElement.id; a.textContent = '#'; a.setAttribute('aria-label', 'Link to this section'); h.append(a);
+  });
+  const links = [...document.querySelectorAll('.side a, .mobile-toc a')];
+  const mark = id => links.forEach(a => {
+    const on = a.getAttribute('href') === '#' + id; a.classList.toggle('on', on);
+    if (on && a.closest('.mobile-toc')) a.scrollIntoView({ inline: 'center', block: 'nearest' });
+  });
+  const visible = new Map();
+  const spy = new IntersectionObserver(es => {
+    es.forEach(e => visible.set(e.target.id, e.isIntersecting ? e.boundingClientRect.top : null));
+    const top = [...visible].filter(([, t]) => t !== null).sort((a, b) => a[1] - b[1])[0];
+    if (top) mark(top[0]);
+  }, { rootMargin: '-80px 0px -60% 0px' });
+  document.querySelectorAll('article section[id]').forEach(s => spy.observe(s));
+</script>
+</body>
+</html>
