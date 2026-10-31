@@ -5141,7 +5141,9 @@ final class MenuBar: NSObject, NSMenuDelegate {
     @discardableResult func add(_ m: NSMenu, _ t: String, _ a: Selector?, _ k: String, _ symbol: String) -> NSMenuItem {
         let i = NSMenuItem(title: t, action: a, keyEquivalent: k); i.target = self
         i.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?.withSymbolConfiguration(.init(pointSize: 13, weight: .regular))   // a point size keeps wide symbols' shape
+        #if compiler(>=6.3)   // the macOS 27 SDK's Swift: older SDKs don't have this property at all
         if #available(macOS 27.0, *) { i.preferredImageVisibility = .visible }   // macOS 27 hides menu symbols by default
+        #endif
         m.addItem(i); return i
     }
     func today() -> String {

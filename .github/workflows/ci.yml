@@ -28,7 +28,7 @@ jobs:
           python3 -m unittest discover -s tests -v 2>&1 | tee "$RUNNER_TEMP/tests.log"
           status=${PIPESTATUS[0]}
           # failures as annotations, readable from the checks API as well as the page
-          python3 .github/annotate.py tests "$RUNNER_TEMP/tests.log"
+          python3 .github/annotate.py tests "$RUNNER_TEMP/tests.log" $status
           exit $status
       - name: Script syntax
         run: bash -n build.sh install.sh
@@ -50,7 +50,7 @@ jobs:
           swiftc --version
           CLOVER_PACKAGE="$RUNNER_TEMP/dist" ./build.sh 2>&1 | tee "$RUNNER_TEMP/build.log"
           status=${PIPESTATUS[0]}
-          python3 .github/annotate.py swift "$RUNNER_TEMP/build.log"
+          python3 .github/annotate.py swift "$RUNNER_TEMP/build.log" $status
           exit $status
       - name: Native self-test
         run: '"$RUNNER_TEMP/dist/Clover.app/Contents/MacOS/Clover" --selftest'

@@ -2,7 +2,7 @@
 import re
 import sys
 
-kind, path = sys.argv[1], sys.argv[2]
+kind, path, failed = sys.argv[1], sys.argv[2], sys.argv[3:] != ['0']
 text = open(path, errors='replace').read()
 escape = lambda s: s.replace('%', '%25').replace('\r', '').replace('\n', '%0A')
 shown = 0
@@ -14,5 +14,5 @@ else:
         head = re.match(r'(FAIL|ERROR): (\S+) \(([^)]+)\)', block)
         if head and shown < 40:
             print(f'::error title={head[1]} {head[2]}::{escape(block[-1500:])}'); shown += 1
-if not shown and re.search(r'(?i)error|fail', text[-3000:]):   # anything else: the end of the log
+if not shown and failed:   # anything else: the end of the log
     print(f'::error title=Last lines::{escape(text[-2500:])}')
