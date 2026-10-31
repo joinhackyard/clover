@@ -22,7 +22,14 @@ jobs:
         with:
           node-version: "22"
       - name: Offline regressions (brain, provider engine, page harnesses)
-        run: python3 -m unittest discover -s tests -v
+        shell: bash
+        run: |
+          set +e
+          python3 -m unittest discover -s tests -v 2>&1 | tee "$RUNNER_TEMP/tests.log"
+          status=${PIPESTATUS[0]}
+          # failures as annotations, readable from the checks API as well as the page
+          python3 .github/annotate.py tests "$RUNNER_TEMP/tests.log"
+          exit $status
       - name: Script syntax
         run: bash -n build.sh install.sh
       - name: Sounds and artwork rebuild cleanly
@@ -37,9 +44,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Compile and package
+        shell: bash
         run: |
+          set +e
           swiftc --version
-          CLOVER_PACKAGE="$RUNNER_TEMP/dist" ./build.sh
+          CLOVER_PACKAGE="$RUNNER_TEMP/dist" ./build.sh 2>&1 | tee "$RUNNER_TEMP/build.log"
+          status=${PIPESTATUS[0]}
+          python3 .github/annotate.py swift "$RUNNER_TEMP/build.log"
+          exit $status
       - name: Native self-test
         run: '"$RUNNER_TEMP/dist/Clover.app/Contents/MacOS/Clover" --selftest'
       - name: Zip the app
