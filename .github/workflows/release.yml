@@ -1,12 +1,10 @@
 name: Release
 on:
   push:
+    branches: [main]
+    paths: [VERSION, .github/workflows/release.yml]   # bumping VERSION on main releases it
     tags: ["v*.*.*"]
   workflow_dispatch:
-    inputs:
-      tag:
-        description: "Tag to release (e.g. v1.1.0)"
-        required: true
 permissions:
   contents: write
 jobs:
@@ -14,29 +12,36 @@ jobs:
     name: Build and publish Clover
     runs-on: macos-26
     timeout-minutes: 30
-    env:
-      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ env.TAG }}
           fetch-depth: 0
-      - name: VERSION matches the tag
-        run: test "v$(tr -d '\n' < VERSION)" = "$TAG"
+      - name: Version
+        run: echo "TAG=v$(tr -d '\n' < VERSION)" >> "$GITHUB_ENV"
+      - name: Skip versions already released
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then echo "SKIP=1" >> "$GITHUB_ENV"; fi
       - name: Offline regressions
+        if: env.SKIP != '1'
         run: python3 -m unittest discover -s tests
       - name: Build Clover.app
+        if: env.SKIP != '1'
         run: CLOVER_PACKAGE="$RUNNER_TEMP/dist" ./build.sh
       - name: Native self-test
+        if: env.SKIP != '1'
         run: '"$RUNNER_TEMP/dist/Clover.app/Contents/MacOS/Clover" --selftest'
       - name: Package
+        if: env.SKIP != '1'
         run: |
           cd "$RUNNER_TEMP"
           ditto -c -k --keepParent dist/Clover.app "Clover-$TAG-macOS.zip"
           shasum -a 256 "Clover-$TAG-macOS.zip" > "Clover-$TAG-macOS.zip.sha256"
       - name: Publish the GitHub release
+        if: env.SKIP != '1'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "Clover $TAG" --generate-notes --verify-tag
+          gh release create "$TAG" --title "Clover $TAG" --generate-notes --target "$GITHUB_SHA"   # creates the tag too
           gh release upload "$TAG" "$RUNNER_TEMP/Clover-$TAG-macOS.zip" "$RUNNER_TEMP/Clover-$TAG-macOS.zip.sha256" --clobber

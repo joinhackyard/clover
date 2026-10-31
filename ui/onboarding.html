@@ -693,7 +693,7 @@
   document.querySelectorAll('[data-improve]').forEach(b => b.onclick = () => { post({ do: 'set', k: 'improve', v: b.dataset.improve }); go('tip'); });
   document.querySelectorAll('.sw input').forEach(i => i.onchange = () => post({ do: 'set', k: i.dataset.k, v: String(i.checked) }));
   let prefs = {};
-  const WHY = { cheapest: 'Haiku for every ask. Fastest, and uses the least of your plan.', balanced: 'Haiku for quick asks. Your work model takes over real work.',
+  const WHY = { cheapest: 'Haiku 5.5 for every ask. Fastest, and uses the least of your plan.', balanced: 'Haiku 5.5 for quick asks. Your work model takes over real work.',
     capable: 'Your work model for every ask. Slower, and uses the most of your plan.' };
   const DIRECT_WHY = { cheapest: 'Your fast model for every ask. Quickest and cheapest.', balanced: 'Your fast model for quick asks, your work model for real work.',
     capable: 'Your work model for every ask. Slower, and costs the most.' };
