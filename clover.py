@@ -8068,7 +8068,7 @@ if __name__ == '__main__':
             assert fast(said) == done, (said, fast(said))
         assert re.findall(r'--remember\s+["\']([^"\']+)', f'{REMEMBER} "open means front"') == ['open means front']
         assert label('Bash', {'command': f'{FRONT} "Google Chrome" "posthog"'}) == 'Bringing Google Chrome forward'
-        assert picks()['routing'][1] and 'safe' in switches()
+        assert picks()['routing'][1] and 'speak' in switches()
         assert shortcut_commands('work mode', [f'{PLACE} "Orca" full monitor; {PLACE} "Google Chrome" full laptop && open -g -a Spotify'])[0] == f"{PLACE} Orca full monitor + 'Google Chrome' full laptop"
         assert shortcut_commands('work mode', [f'{PLACE} "Orca" full monitor | head']) is None
         assert ARRANGE.search(f'{PLACE} "Orca" full monitor') and ARRANGE.search('osascript -e \'set value of attribute "AXFullScreen" of window 1 to true\'') and not ARRANGE.search(f'{SHOW} --bg Spotify')

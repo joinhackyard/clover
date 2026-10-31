@@ -3728,8 +3728,8 @@ final class App: NSObject, WKScriptMessageHandler {
             let g = stops
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [self] in if g == stops { finish() } }; return
         }
-        if handsFree && Prefs.bool("voiceCommands") && voiceCommand(text) { return }
         aheadItem?.cancel()
+        if handsFree && Prefs.bool("voiceCommands") && voiceCommand(text) { return }
         if liveRevised {
             hush(); js("msg", "Your words changed after Clover acted. Check them, then press Return.")
             pinned = true; panel.makeKey(); panel.makeFirstResponder(web); js("draft", text); return
@@ -3749,37 +3749,6 @@ final class App: NSObject, WKScriptMessageHandler {
         answer = "✓ " + did.joined(separator: " ")
         followUp = handsFree
         js("line", answer); deliver(did.joined(separator: " ")); lastDone = Date(); cue("soundDone"); followUpSoon(); hide(after: linger(5))
-    }
-
-    // Hands-free voice commands: a few words that steer the chat itself and never reach the AI.
-    static func voiceCommandKind(_ said: String, wakeName: String = "clover") -> String? {
-        let words = transcriptKey(said).replacingOccurrences(of: "’", with: "'").replacingOccurrences(of: "\(wakeName.lowercased())", with: "").trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters))
-        let key = words.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
-        if ["stop", "cancel", "never mind", "nevermind", "that's all", "thats all", "that is all", "thanks", "thank you", "goodbye", "good bye", "bye", "see you", "we're done", "were done", "done", "ok bye", "okay bye", "stop listening", "go away", "dismiss"].contains(key) { return "end" }
-        if ["copy that", "copy it", "copy this", "copy the answer", "copy"].contains(key) { return "copy" }
-        if ["say that again", "repeat that", "repeat", "read that again", "say it again", "what did you say", "come again", "read it again", "read that"].contains(key) { return "repeat" }
-        if ["be quiet", "quiet", "shush", "shh", "stop talking", "mute"].contains(key) { return "quiet" }
-        return nil
-    }
-    func voiceCommand(_ said: String) -> Bool {
-        guard let kind = Self.voiceCommandKind(said, wakeName: Self.wakeName) else { return false }
-        let last = answer.hasPrefix("✓ ") ? String(answer.dropFirst(2)) : answer
-        busy = false; unwarm(); dropAhead(); text = ""
-        switch kind {
-        case "end":
-            shush(); handsFree = false; followUp = false; cue("soundStop"); js("stopped", "See you soon 🍀"); hide(after: 1.2)
-        case "copy":
-            guard !last.isEmpty else { js("notice", "Nothing to copy yet."); followUp = true; followUpSoon(); return true }
-            NSPasteboard.general.clearContents(); NSPasteboard.general.setString(last, forType: .string)
-            js("notice", "Copied 🍀"); cue("soundDone"); followUp = true; followUpSoon()
-        case "repeat":
-            guard !last.isEmpty else { js("notice", "Nothing to repeat yet."); followUp = true; followUpSoon(); return true }
-            js("notice", "Saying it again"); deliver(last, force: true); followUp = true; followUpSoon()
-        default:
-            shush(); js("notice", "Quiet now. Say “Clover” when you need me."); followUp = false; hide(after: 1.5)
-            handsFree = false
-        }
-        return true
     }
 
     // clover.py --wait, started at key-down so Claude is up by the time the user lets go; run() hands it the words.
@@ -3888,6 +3857,38 @@ final class App: NSObject, WKScriptMessageHandler {
     }
 
     func unwarm() { warm?.p.terminate(); warm = nil }
+
+    // Hands-free voice commands: a few words that steer the chat itself and never reach the AI.
+    static func voiceCommandKind(_ said: String, wakeName: String = "clover") -> String? {
+        let words = transcriptKey(said).replacingOccurrences(of: "’", with: "'").replacingOccurrences(of: "\(wakeName.lowercased())", with: "").trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters))
+        let key = words.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        if ["stop", "cancel", "never mind", "nevermind", "that's all", "thats all", "that is all", "thanks", "thank you", "goodbye", "good bye", "bye", "see you", "we're done", "were done", "done", "ok bye", "okay bye", "stop listening", "go away", "dismiss"].contains(key) { return "end" }
+        if ["copy that", "copy it", "copy this", "copy the answer", "copy"].contains(key) { return "copy" }
+        if ["say that again", "repeat that", "repeat", "read that again", "say it again", "what did you say", "come again", "read it again", "read that"].contains(key) { return "repeat" }
+        if ["be quiet", "quiet", "shush", "shh", "stop talking", "mute"].contains(key) { return "quiet" }
+        return nil
+    }
+    func voiceCommand(_ said: String) -> Bool {
+        guard let kind = Self.voiceCommandKind(said, wakeName: Self.wakeName) else { return false }
+        let last = answer.hasPrefix("✓ ") ? String(answer.dropFirst(2)) : answer
+        busy = false; unwarm(); dropAhead(); text = ""
+        switch kind {
+        case "end":
+            shush(); handsFree = false; followUp = false; cue("soundStop"); js("stopped", "See you soon 🍀"); hide(after: 1.2)
+        case "copy":
+            guard !last.isEmpty else { js("notice", "Nothing to copy yet."); followUp = true; followUpSoon(); return true }
+            NSPasteboard.general.clearContents(); NSPasteboard.general.setString(last, forType: .string)
+            js("notice", "Copied 🍀"); cue("soundDone"); followUp = true; followUpSoon()
+        case "repeat":
+            guard !last.isEmpty else { js("notice", "Nothing to repeat yet."); followUp = true; followUpSoon(); return true }
+            js("notice", "Saying it again"); deliver(last, force: true); followUp = true; followUpSoon()
+        default:
+            shush(); js("notice", "Quiet now. Say “Clover” when you need me."); followUp = false; hide(after: 1.5)
+            handsFree = false
+        }
+        return true
+    }
+
 
     func run(_ t: String, speculative: Bool = false, remaining: String? = nil) {
         let point = pointContext, drawn = drawing.summary

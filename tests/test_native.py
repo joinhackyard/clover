@@ -326,6 +326,7 @@ final class DrawingStub { var active = false, advances = 0; func next() { advanc
 final class Harness {
     var quietFollowUp = false
     var handsFree = false, followUp = false
+    func voiceCommand(_ said: String) -> Bool { false }   // hands-free only; this harness never is
     var drawingReply = false; let drawing = DrawingStub()
     func typed(_ text: String, heard: Bool = false) { request = text }
     var busy = true, selectionPending = false, fastBusy = false, liveRevised = false, pinned = false, guardUntil = Date.distantPast
