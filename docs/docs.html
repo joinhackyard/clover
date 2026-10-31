@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#F7F3EA" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#141311" media="(prefers-color-scheme: dark)">
 <meta property="og:title" content="Clover Docs">
-<meta property="og:image" content="https://joinhackyard.github.io/clover/social-preview.png">
+<meta property="og:image" content="https://joinhackyard.github.io/clover/banner.png">
 <link rel="icon" href="icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,7 +21,7 @@
   .side h6:first-child { margin-top: 0; }
   .side a { position: relative; display: block; padding: 6px 12px; border-radius: 10px; font-size: 14.5px; color: var(--ink-2); text-decoration: none; transition: color .15s ease, background-color .15s ease; }
   .side a:hover { color: var(--ink); background: var(--fill); }
-  .side a.on { color: var(--accent-ink); background: var(--accent-soft); font-weight: 600; }
+  .side a.on { color: var(--deep); background: var(--mint); font-weight: 700; }
   article { max-width: 720px; padding-bottom: 40px; }
   article > header h1 { margin: 0; font-size: clamp(40px, 6vw, 64px); }
   article > header p { margin: 16px 0 0; }
@@ -34,13 +34,13 @@
   article a { color: var(--accent-ink); text-decoration-thickness: 1px; text-underline-offset: 2px; }
   .anchor { margin-left: 8px; color: var(--ink-3); text-decoration: none !important; opacity: 0; transition: opacity .15s ease; font-weight: 600; }
   h2:hover .anchor, h3:hover .anchor { opacity: 1; }
-  table { width: 100%; margin: 16px 0; border-collapse: separate; border-spacing: 0; font-size: 14.5px; border-radius: 14px; overflow: hidden; box-shadow: var(--shadow-sm); background: var(--surface); }
+  table { width: 100%; margin: 16px 0; border-collapse: separate; border-spacing: 0; font-size: 14.5px; border-radius: var(--r-card); overflow: hidden; box-shadow: 0 0 0 1px var(--line); background: var(--surface); }
   th, td { padding: 11px 14px; text-align: left; vertical-align: top; border-bottom: .5px solid var(--line); color: var(--ink-2); line-height: 1.5; }
   th { font-weight: 600; color: var(--ink); background: var(--fill); font-size: 13px; }
   tr:last-child td { border-bottom: 0; } td:first-child { color: var(--ink); font-weight: 500; }
   .tablewrap { overflow-x: auto; margin: 16px -4px; padding: 0 4px; } .tablewrap table { margin: 0; min-width: 520px; }
-  .note { margin: 18px 0; padding: 14px 18px; border-radius: 14px; background: var(--accent-soft); color: var(--ink); font-size: 15px; line-height: 1.55; }
-  .note.warn { background: color-mix(in oklab, var(--sun) 22%, transparent); }
+  .note { margin: 18px 0; padding: 16px 20px; border-radius: var(--r-card); background: var(--mint); color: var(--ink); font-size: 15px; line-height: 1.55; }
+  .note.warn { background: var(--sun); }
   .note b { color: var(--ink); }
   pre { margin: 14px 0; padding: 0; } .cmd { margin: 14px 0; }
   .steps-list { counter-reset: s; list-style: none; padding: 0; } .steps-list li { counter-increment: s; position: relative; padding-left: 40px; margin: 14px 0; }
@@ -56,7 +56,7 @@
     .docs { grid-template-columns: 1fr; gap: 0; padding-top: 16px; }
     .side { display: none; }
     .mobile-toc { display: flex; gap: 6px; overflow-x: auto; position: sticky; top: 64px; z-index: 10; margin: 0 calc(var(--gutter) * -1); padding: 10px var(--gutter);
-      background: var(--glass); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: 0 .5px 0 var(--line); scrollbar-width: none; }
+      background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); box-shadow: 0 .5px 0 var(--line); scrollbar-width: none; }
     .mobile-toc::-webkit-scrollbar { display: none; }
     .mobile-toc a { flex: none; padding: 7px 12px; border-radius: 999px; background: var(--fill-2); font-size: 13.5px; font-weight: 500; color: var(--ink-2); text-decoration: none; }
     .mobile-toc a.on { background: var(--accent); color: var(--on-accent); }
@@ -66,11 +66,11 @@
 <body>
 <header class="nav">
   <div class="wrap">
-    <a class="brand" href="./"><img src="icon.png" alt="">Clover <small>Docs</small></a>
+    <a class="brand" href="./"><img src="art/clover-green-sm.png" alt="">Clover Docs</a>
     <nav class="nav-links" aria-label="Site">
       <a href="./#features">Features</a><a href="./#gestures">Gestures</a><a href="docs.html" aria-current="page">Docs</a><a href="https://github.com/joinhackyard/clover">GitHub</a>
     </nav>
-    <a class="btn primary" href="https://github.com/joinhackyard/clover/releases/latest" data-download>Download</a>
+    <a class="btn small" href="https://github.com/joinhackyard/clover/releases/latest" data-download>Download</a>
   </div>
 </header>
 
@@ -92,8 +92,7 @@
       <a href="#install">Install</a><a href="#ai">AI</a><a href="#shortcut">Shortcut</a><a href="#hands-free">Hands-free</a><a href="#gestures">Gestures</a><a href="#dictate">Dictate</a><a href="#point">Point</a><a href="#agents">Agents</a><a href="#meetings">Meetings</a><a href="#permissions">Safety</a><a href="#privacy">Privacy</a><a href="#faq">Help</a>
     </nav>
     <header>
-      <div class="eyebrow">Documentation</div>
-      <h1 class="display">Clover, start to finish.</h1>
+            <h1 class="display">Clover, start to finish.</h1>
       <p class="lede">Everything you need to install Clover, pick an AI, and get the most out of your voice, your trackpad and your screen.</p>
     </header>
 
@@ -294,8 +293,8 @@
 
 <footer class="foot">
   <div class="wrap">
-    <a class="brand" href="./"><img src="icon.png" alt="">Clover</a>
-    <span>Made with 💚&nbsp;by <a href="https://hackyard.org">Hackyard</a>. MIT licensed.</span>
+    <a class="brand" href="./"><img src="art/clover-green-sm.png" alt="">Clover</a>
+    <span>Made by <a href="https://hackyard.org">Hackyard</a>. MIT licensed.</span>
     <nav aria-label="Footer"><a href="./">Home</a><a href="https://github.com/joinhackyard/clover">GitHub</a><a href="https://github.com/joinhackyard/clover/releases">Releases</a><a href="https://github.com/joinhackyard/clover/issues">Report a bug</a></nav>
   </div>
 </footer>
