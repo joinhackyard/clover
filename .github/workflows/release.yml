@@ -25,7 +25,13 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then echo "SKIP=1" >> "$GITHUB_ENV"; fi
       - name: Offline regressions
         if: env.SKIP != '1'
-        run: python3 -m unittest discover -s tests
+        shell: bash
+        run: |
+          set +e
+          python3 -m unittest discover -s tests 2>&1 | tee "$RUNNER_TEMP/tests.log"
+          status=${PIPESTATUS[0]}
+          python3 .github/annotate.py tests "$RUNNER_TEMP/tests.log" $status
+          exit $status
       - name: Build Clover.app
         if: env.SKIP != '1'
         run: CLOVER_PACKAGE="$RUNNER_TEMP/dist" ./build.sh

@@ -1027,8 +1027,9 @@ print(json.dumps({{'response': 'Only answering.'}}))
         self.assertLessEqual(max(naps), .02)
 
     def test_allow_answer_is_picked_up_quickly(self):
-        naps = []
+        naps, me, real = [], threading.get_ident(), time.sleep
         def nap(secs):
+            if threading.get_ident() != me: return real(secs)   # other tests' background threads sleep too
             naps.append(secs)
             Path(json.loads(Path(clover.question_path(self.root)).read_text())['_a']).write_text('y')   # the user clicks Allow
         with patch.dict(os.environ, {'CLOVER_ASK': str(self.root)}), patch.object(clover.time, 'sleep', side_effect=nap):
