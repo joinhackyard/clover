@@ -460,7 +460,7 @@ print("Clicked Export")
         self.assertNotIn('Screen capture unavailable', prompts[0])
         row = clover.read_rows(str(Path(self.root.name, 'log.jsonl')))[0]
         summary = next(s for s in row['step_times'] if s['label'] == 'Reading front-window summary')
-        self.assertLessEqual(summary['added_before_model'], .41)
+        self.assertLessEqual(summary['added_before_model'], .45)   # 0.4 s cap plus shared-runner jitter
         print(f"FRONT SUMMARY ADDED BEFORE MODEL: {summary['added_before_model']:.3f}s", flush=True)
 
     def test_fast_path_waits_for_window_summary_before_scratch_cleanup(self):

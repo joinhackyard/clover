@@ -3729,7 +3729,7 @@ final class App: NSObject, WKScriptMessageHandler {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [self] in if g == stops { finish() } }; return
         }
         aheadItem?.cancel()
-        if handsFree && Prefs.bool("voiceCommands") && voiceCommand(text) { return }
+        if handsFree && voiceCommand(text) { return }
         if liveRevised {
             hush(); js("msg", "Your words changed after Clover acted. Check them, then press Return.")
             pinned = true; panel.makeKey(); panel.makeFirstResponder(web); js("draft", text); return
@@ -3869,7 +3869,7 @@ final class App: NSObject, WKScriptMessageHandler {
         return nil
     }
     func voiceCommand(_ said: String) -> Bool {
-        guard let kind = Self.voiceCommandKind(said, wakeName: Self.wakeName) else { return false }
+        guard Prefs.bool("voiceCommands"), let kind = Self.voiceCommandKind(said, wakeName: Self.wakeName) else { return false }
         let last = answer.hasPrefix("✓ ") ? String(answer.dropFirst(2)) : answer
         busy = false; unwarm(); dropAhead(); text = ""
         switch kind {
