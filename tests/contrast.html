@@ -29,7 +29,8 @@ try {
  d.getElementById('status').innerHTML='<span>Thinking…</span>';
  w.ui.mode(false);w.ui.agentCount(2);
  w.ui.hover(true);w.ui.models({list:['haiku','sonnet'],pick:'haiku'});
- const rgba=s=>s.match(/[\d.]+/g).map(Number), over=(fg,bg)=>fg.slice(0,3).map((v,i)=>v*(fg[3]??1)+bg[i]*(1-(fg[3]??1)));
+ const probe=document.createElement('canvas').getContext('2d',{willReadFrequently:true}),seen=new Map();   // any CSS colour (color-mix serializes as color(srgb …) or oklab(…)) through the canvas, as rgba 0–255 / 0–1
+ const rgba=s=>{if(!seen.has(s)){probe.clearRect(0,0,1,1);probe.fillStyle='rgba(0,0,0,0)';probe.fillStyle=s;probe.fillRect(0,0,1,1);const [r,g,b,a]=probe.getImageData(0,0,1,1).data;seen.set(s,a?[r,g,b,a/255]:[0,0,0,0]);}return seen.get(s)}, over=(fg,bg)=>fg.slice(0,3).map((v,i)=>v*(fg[3]??1)+bg[i]*(1-(fg[3]??1)));
  const lum=c=>c.map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4}).reduce((s,v,i)=>s+v*[.2126,.7152,.0722][i],0);
  const rows=[],fails=[];
  for(const state of ['rest','hover','focus']) {

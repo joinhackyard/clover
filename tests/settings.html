@@ -40,10 +40,14 @@ try {
   assert(!d.getElementById('localserver').hidden&&d.getElementById('uselocal').textContent==='Use Ollama','A running local server is offered');
   d.getElementById('uselocal').click();await new Promise(r=>setTimeout(r,20));
   assert(messages.some(m=>m.do==='set'&&m.k==='apiBase'&&m.v==='http://localhost:11434')&&messages.some(m=>m.do==='set'&&m.k==='apiModel'&&m.v==='qwen3'),'Local offer fills the address and first server model');
+  w.st.load({prefs:{...base,routing:'balanced',client:'antigravity'}});
+  assert(d.querySelector('[data-k=routing]').closest('.row').hidden&&d.getElementById('agentsettings').hidden&&!d.getElementById('agy').hidden,'Antigravity hides Claude routing and background agents, and shows its own section');
+  assert(d.getElementById('agy').textContent.includes('Install the Antigravity CLI and sign in once with agy')&&d.getElementById('agyModel').placeholder.includes('default')&&d.getElementById('planname').textContent==='Antigravity','Antigravity explains its sign-in; a blank model means its default');
+  d.getElementById('agyModel').value=' gemini-3.1-pro ';d.getElementById('agyModel').dispatchEvent(new w.Event('change'));await new Promise(r=>setTimeout(r,20));
+  assert(messages.some(m=>m.do==='set'&&m.k==='agyModel'&&m.v==='gemini-3.1-pro'),'The Antigravity model saves trimmed');
+  assert([...d.querySelectorAll('[data-k=client] button')].map(b=>b.dataset.v).join()==='claude,antigravity,direct'&&!/devin|\bpi\b/i.test(d.getElementById('brain').textContent),'Exactly three AI providers; no Devin or Pi');
   w.st.load({prefs:{...base,routing:'balanced',client:'devin'}});
-  assert(d.querySelector('[data-k=routing]').closest('.row').hidden,'Other clients hide Claude routing');
-  w.st.load({prefs:{...base,routing:'balanced',client:'pi'}});
-  assert(d.querySelector('[data-k=routing]').closest('.row').hidden&&d.getElementById('agentsettings').hidden,'Pi hides Claude routing and background agents');
+  assert(d.querySelector('[data-k=client] [data-v=claude]').getAttribute('aria-pressed')==='true','An old Devin choice reads as Claude Code');
   assert(!d.querySelector('[data-k=longAsks]'),'Long asks always move: no setting');
   w.st.load({prefs:{...base,routing:'balanced',client:'claude'}});
   w.st.tab('feedback');
@@ -220,16 +224,35 @@ try {
   q('#provmodelsbtn').click();await tick();assert(posted({do:'providerModels'}),'Load Models asks native');
   w.st.providerModels({provider:'anthropic',list:['stale']});assert(q('#provmodels').options.length===0,'Another provider’s models are ignored');
   w.st.providerModels({provider:'openai',list:['gpt-5','gpt-5-mini']});assert(q('#provmodels').options.length===2&&q('[data-k=openaiWorkModel]').getAttribute('list')==='provmodels'&&q('#provnote').textContent.startsWith('Found 2'),'Loaded models are offered in every model field');
-  for(const [pv,fields] of [['azure',['azureEndpoint','azureKey','azureDeployment','azureWorkDeployment','azureApiVersion']],['custom',['customBase','customKey','customModel','customWorkModel']]]){
+  assert([...d.querySelectorAll('[data-k=provider] button')].map(b=>b.dataset.v).join()==='anthropic,openai,azure,gemini,openrouter,groq,mistral,deepseek,xai,ollama,custom','The API key picker lists every provider');
+  for(const [pv,fields] of [['azure',['azureEndpoint','azureKey','azureDeployment','azureWorkDeployment','azureApiVersion']],['gemini',['geminiKey','geminiModel','geminiWorkModel']],['openrouter',['openrouterKey','openrouterModel','openrouterWorkModel']],
+      ['groq',['groqKey','groqModel','groqWorkModel']],['mistral',['mistralKey','mistralModel','mistralWorkModel']],['deepseek',['deepseekKey','deepseekModel','deepseekWorkModel']],['xai',['xaiKey','xaiModel','xaiWorkModel']],
+      ['ollama',['ollamaBase','ollamaModel','ollamaWorkModel']],['custom',['customBase','customKey','customModel','customWorkModel']]]){
     q(`[data-k=provider] [data-v=${pv}]`).click();await tick();
     assert(!q(`[data-pv=${pv}]`).hidden&&fields.every(k=>q(`[data-pv=${pv}] [data-k=${k}]`)),pv+' shows all of its fields');
     for(const k of fields){const e=q(`[data-k=${k}]`);e.value=k+'-value';e.dispatchEvent(new w.Event('change'));} await tick();
     assert(fields.every(k=>posted({do:'set',k,v:k+'-value'})),pv+' fields each save');
   }
   assert(q('[data-k=azureApiVersion]').closest('.row').textContent.includes('v1'),'Azure explains the v1 API version');
+  w.st.load({prefs:{hotkeyLabel:'⌃⌥Space',client:'direct'}});
+  const dflt={geminiModel:'gemini-3.5-flash',geminiWorkModel:'gemini-3.1-pro',openrouterModel:'openrouter/auto',openrouterWorkModel:'openrouter/auto',groqModel:'llama-3.3-70b-versatile',groqWorkModel:'llama-3.3-70b-versatile',
+    mistralModel:'mistral-small-latest',mistralWorkModel:'mistral-large-latest',deepseekModel:'deepseek-chat',deepseekWorkModel:'deepseek-reasoner',xaiModel:'grok-4-fast',xaiWorkModel:'grok-4',ollamaBase:'http://localhost:11434/v1'};
+  assert(Object.entries(dflt).every(([k,v])=>q(`[data-k=${k}]`).value===v),'Every provider shows its defaults when nothing is saved');
+  assert(!q('[data-pv=ollama] [type=password]')&&[...d.querySelectorAll('[data-pv]:not([data-pv=ollama]) .row.key input')].every(e=>e.type==='password'&&e.nextElementSibling.classList.contains('eye')),'Ollama needs no key; every other key is masked with show/hide');
   q('[data-k=customFormat] [data-v=anthropic]').click();await tick();assert(posted({do:'set',k:'customFormat',v:'anthropic'}),'A custom endpoint can speak Anthropic Messages');
   w.st.load({prefs:{hotkeyLabel:'⌃⌥Space',client:'direct',provider:'azure',azureApiVersion:'v1'}});
   assert(!q('[data-pv=azure]').hidden&&q('[data-k=azureApiVersion]').value==='v1'&&q('#planname').textContent==='Azure OpenAI'&&q('#brainlede').textContent.includes('Azure OpenAI'),'Saved provider values come back from native');
+  // Safety: Ask first · Auto · Bypass permissions, with an inline confirm before Bypass
+  w.st.load({prefs:{hotkeyLabel:'⌃⌥Space',safe:true}});w.st.tab('account');
+  const modes=()=>[...d.querySelectorAll('#permmode .mode')].map(b=>b.getAttribute('aria-checked')==='true'?b.dataset.v:'').join('');
+  assert(modes()==='ask'&&!d.querySelector('[data-k=safe]'),'Without permissionMode, safe on reads as Ask first; no Safe mode switch');
+  w.st.load({prefs:{hotkeyLabel:'⌃⌥Space',safe:false}});assert(modes()==='bypass','safe off reads as Bypass permissions');
+  w.st.load({prefs:{hotkeyLabel:'⌃⌥Space',permissionMode:'ask'}});
+  q('#permmode [data-v=auto]').click();await tick();assert(posted({do:'set',k:'permissionMode',v:'auto'})&&modes()==='auto','Auto saves at once');
+  q('#permmode [data-v=bypass]').click();await tick();assert(!q('#bypassconfirm').hidden&&!posted({do:'set',k:'permissionMode',v:'bypass'})&&d.activeElement===q('#bypasscancel'),'Bypass asks first, inline, and saves nothing yet');
+  q('#bypasscancel').click();await tick();assert(q('#bypassconfirm').hidden&&modes()==='auto','Cancel keeps the mode you had');
+  q('#permmode [data-v=bypass]').click();q('#bypassok').click();await tick();assert(posted({do:'set',k:'permissionMode',v:'bypass'})&&modes()==='bypass'&&q('#bypassconfirm').hidden,'Confirming saves Bypass permissions');
+  q('#permmode [data-v=ask]').click();await tick();assert(posted({do:'set',k:'permissionMode',v:'ask'}),'Ask first comes back with one click');
   w.st.tab('about');
   assert(q('#about').textContent.includes('Hackyard')&&q('#about [data-do=cheer]').textContent.includes('Star')&&!/tip|ko-fi|atticus/i.test(d.body.textContent),'About is Hackyard’s: star on GitHub, no tips');
   q('#about [data-do=cheer]').click();q('#about [data-do=github]').click();await tick();assert(posted({do:'cheer'})&&posted({do:'github'}),'Star and Source code open GitHub through native');

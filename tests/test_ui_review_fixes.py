@@ -147,22 +147,22 @@ if (away.frames || away.timers || !away.waiting) process.exit(3);
 ''')
 
     def test_settings_and_agents_text_colours_are_readable(self):
-        light = re.search(r':root \{(.*?)\}', self.settings, re.S).group(1)
-        dark = re.search(r'prefers-color-scheme: dark\) \{ :root \{(.*?)\}', self.settings, re.S).group(1)
-        var = lambda block, name: re.search(r'--' + name + r': (#[0-9a-f]{6})', block).group(1)
-        for name in ('fg3', 'warn', 'danger'):
-            self.assertGreaterEqual(contrast(var(light, name), '#f5f5f7' if name == 'fg3' else '#ffffff'), 4.5, name)
-        for name in ('fg3', 'warn'):
-            self.assertGreaterEqual(contrast(var(dark, name), '#2a2a2c'), 4.5, 'dark ' + name)
-        self.assertGreaterEqual(contrast(var(light, 'ok-text'), tint('#34c759', .13)), 4.5)
-        self.assertGreaterEqual(contrast(var(light, 'warn'), tint('#ff9f0a', .14)), 4.5)
-        self.assertNotRegex(self.settings, r'\{[^}]*\bcolor: #ff(9f0a|453a)')   # text uses the tokens; fills may keep the bright colours
-        self.assertGreaterEqual(contrast(re.search(r'--fg3:(#[0-9a-f]{6})', self.agents).group(1), '#1e1e22'), 4.5)
-        setup_light = re.search(r':root \{(.*?)\}', self.onboarding, re.S).group(1)
-        setup_dark = re.search(r'prefers-color-scheme: dark\) \{ :root \{(.*?)\}', self.onboarding, re.S).group(1)
-        self.assertGreaterEqual(contrast(var(setup_light, 'fg3'), '#fbfbfd'), 4.5)
-        self.assertGreaterEqual(contrast(var(setup_dark, 'fg3'), '#2a2a2c'), 4.5)
-        self.assertGreaterEqual(contrast(re.search(r'--fg3:(#[0-9a-f]{6})', self.meeting).group(1), '#1e1e20'), 4.5)
+        # Shared tokens: --ink-3 is for icons and hairlines; small text uses --ink-2, --hint and the text tokens, each AA on paper and on cards.
+        for page in (self.settings, self.onboarding):
+            light = re.search(r':root \{(.*?)\}', page, re.S).group(1)
+            dark = re.search(r'prefers-color-scheme: dark\) \{ :root \{(.*?)\}', page, re.S).group(1)
+            var = lambda block, name: re.search(r'--' + name + r': (#[0-9A-Fa-f]{6})', block).group(1)
+            for name in ('ink-2', 'hint', 'accent-ink', 'warn', 'danger'):
+                for bg in ('#FBF8F3', '#FFFFFF'):
+                    self.assertGreaterEqual(contrast(var(light, name), bg), 4.5, name)
+                for bg in ('#1A1917', '#23221F'):
+                    self.assertGreaterEqual(contrast(var(dark, name if name != 'ink-2' else 'ink-2'), bg), 4.5, 'dark ' + name)
+            self.assertIn('--bg: #FBF8F3; --surface: #FFFFFF; --ink: #1D1B18; --ink-2: #5E5A53; --ink-3: #8F8A81; --line: rgba(29,27,24,.09);', light)
+            self.assertIn('--bg: #1A1917; --surface: #23221F; --ink: #F4F1EA; --ink-2: #B9B4AA; --ink-3: #85807A; --line: rgba(244,241,234,.09);', dark)
+        self.assertGreaterEqual(contrast('#237A52', tint('#2E9E6A', .14)), 4.5)   # pills: accent text on its soft tint
+        self.assertNotRegex(self.settings, r'\{[^}]*\bcolor: #ff(9f0a|453a)')   # text uses the tokens
+        self.assertGreaterEqual(contrast(re.search(r'--fg3:(#[0-9A-Fa-f]{6})', self.agents).group(1), '#1A1917'), 4.5)
+        self.assertGreaterEqual(contrast(re.search(r'--fg3:(#[0-9A-Fa-f]{6})', self.meeting).group(1), '#1A1917'), 4.5)
 
     def test_settings_exposes_the_current_page_and_app_list_choice(self):
         self.assertIn('class="on" aria-current="page"', self.settings)
@@ -215,23 +215,23 @@ if (apiCost(.0412) !== '≈4.12¢ at API prices' || apiCost(.1861) !== '≈18.6�
         self.assertIn("querySelectorAll('.rewrite, .paused, .worker').forEach(e => e.remove())", listen)
 
     def test_rewrite_buttons_answer_hover_and_press_like_card_buttons(self):
-        self.assertIn('.rewrite button:not(:disabled):is(:hover,.hot) { transform: scale(1.03); }', self.box)
-        self.assertIn('.rewrite button:not(:disabled):active { transform: scale(.96); }', self.box)
+        self.assertIn('.rewrite button:not(:disabled):is(:hover,.hot) {', self.box)   # hover tints like the card buttons (no hover scale: it is seen tens of times a day)
+        self.assertIn('.rewrite button:not(:disabled):active { transform: scale(.97); }', self.box)   # the same press as every other button
 
     def test_box_status_markers_share_compact_centered_rows(self):
-        self.assertRegex(self.box, r'\.a\.stopped \{[^}]*align-items: center;[^}]*line-height: 16px;')
+        self.assertRegex(self.box, r'\.a\.stopped \{[^}]*align-items: center;[^}]*line-height: 1[68]px;')
         self.assertRegex(self.box, r'\.a\.stopped i \{ flex: none; width: 7px; height: 7px;')
-        self.assertRegex(self.box, r'\.step \{[^}]*line-height: 16px;[^}]*align-items: center;')
-        self.assertIn('#agents-pill i { flex:none;', self.box)
-        self.assertRegex(self.box, r'\.agent-card \.eyebrow \{[^}]*align-items:center;[^}]*line-height:14px;')
-        self.assertIn('.agent-card .eyebrow i { flex:none;', self.box)
+        self.assertRegex(self.box, r'\.step \{[^}]*line-height: 1[68]px;[^}]*align-items: center;')
+        self.assertRegex(self.box, r'#agents-pill i \{ ?flex: ?none;')
+        self.assertRegex(self.box, r'\.agent-card \.eyebrow \{[^}]*align-items: ?center;[^}]*line-height: ?1[46]px;')
+        self.assertRegex(self.box, r'\.agent-card \.eyebrow i \{ ?flex: ?none;')
 
     def test_agent_start_line_sits_beside_its_orb(self):
         self.assertIn('.a:is(.stopped, .agent-ack) > :not(.w) + :not(.w) { margin-top: 0; }', self.box)
 
     def test_agent_card_can_fold_away(self):
-        self.assertIn('.agent-card { max-height:900px; }', self.box)
-        self.assertNotIn('.agent-card { max-height:none; }', self.box)
+        self.assertRegex(self.box, r'\.agent-card \{ ?max-height: ?900px; \}')
+        self.assertNotRegex(self.box, r'\.agent-card \{ ?max-height: ?none; \}')
 
     def test_agent_card_fits_a_short_box(self):
         card = self.box[self.box.index('  const agentCard=row=>'):self.box.index("  $('agents-pill').onclick")]
@@ -283,7 +283,7 @@ if (classes.has('held') || card.style.minHeight || fitted !== 2) process.exit(2)
         self.assertIn("moveFailed(){status('Could not move');", self.box)   # a failure, not live work
         self.assertNotIn('js("shortcut"', self.swift)
         self.assertNotIn('shortcut() {}', self.box)
-        self.assertIn('d.hidden = skip(pages[i])', self.onboarding)   # Devin/Pi: no dots for skipped pages
+        self.assertIn('d.hidden = skip(pages[i])', self.onboarding)   # Antigravity: no dots for skipped pages
         self.assertNotIn('These need your click', self.onboarding)
         self.assertNotIn('Use Verbatim instead', self.onboarding)
         self.assertIn('id="appsback" onclick="st.tab(\'account\')"', self.settings)

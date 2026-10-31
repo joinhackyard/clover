@@ -5,27 +5,31 @@
 //   MML (the MathML namespace), markdown(text) -> DocumentFragment, shut(streamedText) -> the part safe to show now.
 // Nothing here ever parses HTML: model text only becomes text nodes and elements we create ourselves.
 
-// ─────────────────────────────── The orb: a soft, glowing four-leaf clover ───────────────────────────────
-// Hackyard palette (kept in sync with the pages' --hy-* tokens).
-const HY = { clover: [47, 210, 122], deep: [14, 159, 90], mint: [139, 245, 200], petal: [255, 126, 182], sun: [255, 209, 102], ink: [11, 31, 23] };
+// ─────────────────────────────── The orb: a small, calm four-leaf clover ───────────────────────────────
+// Flat leaves in Clover green, no halo or sparkles: it shows state by how it moves, never by glowing. Colours follow the
+// shared tokens (--accent #2E9E6A / dark #4CC38A, --sage #A8C3A0, --ink-3).
+const PALETTE = {
+  light: { deep: [31, 122, 80], leaf: [46, 158, 106], tip: [86, 182, 136], sage: [168, 195, 160], grey: [143, 138, 129], vein: 0.32, ring: 0.16 },
+  dark: { deep: [46, 158, 106], leaf: [76, 195, 138], tip: [122, 212, 166], sage: [168, 195, 160], grey: [133, 128, 122], vein: 0.22, ring: 0.2 }
+};
 const TAU = Math.PI * 2;
 const mix = (a, b, f) => a.map((v, i) => Math.round(v + (b[i] - v) * f));
 const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
-const ease = x => x * x * (3 - 2 * x);
-const wave = (t, speed, phase = 0) => Math.sin(t * speed + phase);
+const clamp01 = v => Math.max(0, Math.min(1, Number.isFinite(v) ? v : 0));
+const pulse = x => { const s = Math.sin(Math.PI * (((x % 1) + 1) % 1)); return s * s * s * s; };   // a soft bump once per cycle, resting most of the time
 
 // Each look is a handful of numbers the one painter understands. Every state is the same clover, moving differently.
-//   breathe: scale swing   spin: turns per unit t   bloom: how far leaves lift apart   wobble: per-leaf jelly
-//   ripple: listening rings   orbit: sparkles circling   scan: a sweeping highlight   tint: 0 clover … 1 petal   glow: halo strength
+//   breathe: slow size swing   turn: turns per second   wave: a bump that travels leaf to leaf (rate: laps per second)
+//   hop: the bump lifts the leaf too   talk: a speech-like flutter   grey: 0 clover … 1 ink   level: leaves answer the voice
 const LOOKS = {
-  idle:      { speed: 1.0, breathe: 0.045, spin: 0.035, bloom: 0.02, wobble: 0.03, ripple: 0, orbit: 0, scan: 0, tint: 0, glow: 0.55, wink: 1 },
-  listening: { speed: 2.4, breathe: 0.03, spin: 0.05, bloom: 0.06, wobble: 0.08, ripple: 1, orbit: 0, scan: 0, tint: 0, glow: 0.8, level: 1 },
-  thinking:  { speed: 2.2, breathe: 0.02, spin: 0.22, bloom: 0.08, wobble: 0.05, ripple: 0, orbit: 3, scan: 0, tint: 0.08, glow: 0.7 },
-  searching: { speed: 2.0, breathe: 0.02, spin: 0.12, bloom: 0.05, wobble: 0.04, ripple: 0, orbit: 1, scan: 1, tint: 0, glow: 0.65 },
-  working:   { speed: 2.6, breathe: 0.015, spin: 0.08, bloom: 0.1, wobble: 0.12, ripple: 0, orbit: 2, scan: 0, tint: 0.04, glow: 0.7, hop: 1 },
-  speaking:  { speed: 3.0, breathe: 0.02, spin: 0.04, bloom: 0.05, wobble: 0.16, ripple: 0.5, orbit: 0, scan: 0, tint: 0.12, glow: 0.75 },
-  done:      { speed: 0.8, breathe: 0.02, spin: 0, bloom: 0, wobble: 0.015, ripple: 0, orbit: 0, scan: 0, tint: 0, glow: 0.9, sparkle: 1 },
-  error:     { speed: 1.6, breathe: 0.01, spin: 0, bloom: 0.03, wobble: 0.02, ripple: 0, orbit: 0, scan: 0, tint: 0.85, glow: 0.6, shake: 1 }
+  idle:      { speed: 1, breathe: 0.03, turn: 0, wave: 0, rate: 0, hop: 0, talk: 0, grey: 0 },
+  listening: { speed: 1, breathe: 0.025, turn: 0, wave: 0.04, rate: 0.5, hop: 0, talk: 0, grey: 0, level: 1 },
+  thinking:  { speed: 1, breathe: 0.01, turn: 0.05, wave: 0.13, rate: 1.1, hop: 0, talk: 0, grey: 0 },
+  searching: { speed: 1, breathe: 0.01, turn: 0.03, wave: 0.11, rate: 0.8, hop: 0, talk: 0, grey: 0, glint: 1 },
+  working:   { speed: 1, breathe: 0.01, turn: 0.02, wave: 0.1, rate: 1.6, hop: 1, talk: 0, grey: 0 },
+  speaking:  { speed: 1, breathe: 0.015, turn: 0, wave: 0, rate: 0, hop: 0, talk: 1, grey: 0 },
+  done:      { speed: 1, breathe: 0.02, turn: 0, wave: 0, rate: 0, hop: 0, talk: 0, grey: 0, ripe: 1 },
+  error:     { speed: 1, breathe: 0.01, turn: 0, wave: 0, rate: 0, hop: 0, talk: 0, grey: 0.8 }
 };
 // The names pages already use, mapped onto the clover's looks.
 const ALIAS = { breathing: 'idle', ready: 'idle', solving: 'thinking', connecting: 'thinking', composing: 'speaking', weaving: 'thinking',
@@ -35,118 +39,72 @@ const ALIAS = { breathing: 'idle', ready: 'idle', solving: 'thinking', connectin
 const leafPath = (ctx, L, w) => {
   ctx.beginPath();
   ctx.moveTo(0, 0);
-  ctx.bezierCurveTo(-0.18 * L * w, -0.18 * L, -0.66 * L * w, -0.36 * L, -0.52 * L * w, -0.76 * L);
-  ctx.bezierCurveTo(-0.41 * L * w, -1.04 * L, -0.07 * L * w, -1.03 * L, 0, -0.8 * L);
-  ctx.bezierCurveTo(0.07 * L * w, -1.03 * L, 0.41 * L * w, -1.04 * L, 0.52 * L * w, -0.76 * L);
-  ctx.bezierCurveTo(0.66 * L * w, -0.36 * L, 0.18 * L * w, -0.18 * L, 0, 0);
+  ctx.bezierCurveTo(-0.16 * L * w, -0.16 * L, -0.64 * L * w, -0.36 * L, -0.52 * L * w, -0.74 * L);
+  ctx.bezierCurveTo(-0.42 * L * w, -1.02 * L, -0.08 * L * w, -1.04 * L, 0, -0.8 * L);
+  ctx.bezierCurveTo(0.08 * L * w, -1.04 * L, 0.42 * L * w, -1.02 * L, 0.52 * L * w, -0.74 * L);
+  ctx.bezierCurveTo(0.64 * L * w, -0.36 * L, 0.16 * L * w, -0.16 * L, 0, 0);
   ctx.closePath();
 };
 
 // One frame of one look: plain numbers, so a page can paint it anywhere (or the same frame many times).
+// opts.level (0–1) or opts.levels ([4], one per leaf, already smoothed by the page's springs) make the leaves answer a voice.
 const cloverFrame = (size, t, o) => {
-  const level = Math.max(0, Math.min(1, o.level ?? 0)), lv = o.levelReact ? level : 0;
-  const breath = 1 + o.breathe * wave(t, 1.3) + 0.12 * lv;
-  const shake = o.shake ? Math.sin(t * 22) * Math.max(0, Math.sin(t * 1.4)) * size * 0.012 : 0;
+  const react = !!o.levelReact || Array.isArray(o.levels), level = react ? clamp01(o.level) : 0;   // levels from another look: the leaves settle back on their springs
   const leaves = [];
   for (let k = 0; k < 4; k++) {
-    const phase = k * TAU / 4;
-    const jelly = o.wobble * wave(t, 2.1, phase * 1.7) + (o.hop ? 0.07 * Math.max(0, wave(t, 2.6, phase)) : 0) + 0.18 * lv * (0.6 + 0.4 * wave(t, 6, phase));
+    const lv = react ? clamp01(o.levels?.[k] ?? level) : 0;
+    const bump = o.wave ? pulse(t * o.rate - k / 4) : 0;
+    const talk = o.talk ? 0.07 * (0.5 + 0.5 * Math.sin(t * 8.6 + k * 1.7)) * (0.55 + 0.45 * Math.sin(t * 2.1 + k * 0.9)) : 0;
     leaves.push({
-      angle: Math.PI / 4 + phase + o.spin * t + 0.05 * o.wobble * wave(t, 1.7, phase),
-      len: size * 0.25 * breath * (1 + jelly),
-      width: 1 + 0.6 * o.wobble * wave(t, 1.9, phase + 1),
-      lift: size * (0.012 + o.bloom * (0.5 + 0.5 * wave(t, 1.5, phase))) * (1 + 2 * lv)
+      angle: Math.PI / 4 + k * TAU / 4 + o.turn * t * TAU + 0.05 * lv * Math.sin(t * 3 + k),
+      len: size * 0.235 * (1 + o.breathe * Math.sin(t * 1.3 + k * 0.5) + o.wave * bump + talk + 0.17 * lv),
+      width: 1 + 0.05 * lv,
+      lift: size * (0.018 + 0.03 * lv + (o.hop ? 0.025 * bump : 0)),
+      light: o.glint ? bump * 0.5 : bump * 0.25
     });
   }
-  const sparks = [];
-  for (let s = 0; s < (o.orbit || 0); s++) {
-    const a = t * (0.9 + 0.25 * s) + s * TAU / o.orbit, r = size * (0.38 + 0.03 * wave(t, 1.3, s));
-    sparks.push({ x: Math.cos(a) * r, y: Math.sin(a) * r, r: size * (0.022 + 0.01 * wave(t, 3, s)), hue: s % 3 });
-  }
-  const rings = [];
-  if (o.ripple) for (let k = 0; k < 2; k++) {
-    const f = ((t * 0.35 + k / 2) % 1);
-    rings.push({ r: size * (0.26 + 0.22 * f) * (1 + 0.25 * lv), a: o.ripple * (1 - f) * (0.35 + 0.65 * Math.max(lv, 0.25)) });
-  }
-  const wink = o.wink ? Math.max(0, Math.sin(t * 0.37) - 0.985) * 60 : 0;   // now and then a tiny glint runs across a leaf
-  return { size, cx: size / 2 + shake, cy: size / 2, leaves, sparks, rings, glow: o.glow * (1 + 0.5 * lv), tint: o.tint,
-    scan: o.scan ? (t * 0.6) % TAU : null, sparkle: o.sparkle ? 0.5 + 0.5 * wave(t, 1.2) : 0, wink: Math.min(1, wink), small: size < 26 };
+  return { size, cx: size / 2, cy: size / 2, leaves, grey: o.grey || 0, ring: o.levelReact ? level : 0, ripe: o.ripe ? 1 : 0, small: size < 26 };
 };
 
-// Paint a frame. dark: drawn over Clover's dark glass (stronger glow); light: a crisper, deeper clover.
+// Paint a frame. dark: drawn over Clover's dark surfaces (a lighter green); light: a deeper green on paper.
 const paintFrame = (ctx, f, dark = true) => {
-  const { size, cx, cy } = f;
-  const leafA = mix(HY.mint, HY.petal, f.tint), leafB = mix(HY.clover, mix(HY.petal, HY.sun, 0.15), f.tint), leafC = mix(HY.deep, [214, 72, 128], f.tint);
+  const P = dark ? PALETTE.dark : PALETTE.light, { size, cx, cy } = f;
+  const tone = c => f.grey ? mix(c, P.grey, f.grey) : c;
   ctx.save();
-  // halo
-  const halo = ctx.createRadialGradient(cx, cy, size * 0.05, cx, cy, size * 0.5);
-  halo.addColorStop(0, rgba(leafB, (dark ? 0.42 : 0.24) * f.glow));
-  halo.addColorStop(0.55, rgba(leafB, (dark ? 0.14 : 0.07) * f.glow));
-  halo.addColorStop(1, rgba(leafB, 0));
-  ctx.fillStyle = halo; ctx.fillRect(0, 0, size, size);
-  // listening rings
-  for (const ring of f.rings) {
-    ctx.beginPath(); ctx.arc(cx, cy, ring.r, 0, TAU);
-    ctx.strokeStyle = rgba(HY.mint, ring.a * (dark ? 0.55 : 0.75)); ctx.lineWidth = Math.max(0.6, size * 0.018); ctx.stroke();
+  if (f.ring > 0.02) {   // listening: one soft ring that opens a little with the voice
+    ctx.beginPath(); ctx.arc(cx, cy, size * (0.4 + 0.06 * f.ring), 0, TAU);
+    ctx.strokeStyle = rgba(P.leaf, P.ring * f.ring); ctx.lineWidth = Math.max(0.75, size * 0.022); ctx.stroke();
   }
-  // leaves
   for (const leaf of f.leaves) {
     ctx.save();
     ctx.translate(cx + Math.sin(leaf.angle) * leaf.lift, cy - Math.cos(leaf.angle) * leaf.lift);
     ctx.rotate(leaf.angle);
     const g = ctx.createLinearGradient(0, 0, 0, -leaf.len);
-    g.addColorStop(0, rgba(leafC, 1)); g.addColorStop(0.55, rgba(leafB, 1)); g.addColorStop(1, rgba(leafA, 1));
-    if (!f.small) { ctx.shadowColor = rgba(leafB, dark ? 0.55 : 0.3); ctx.shadowBlur = size * 0.08; }
+    g.addColorStop(0, rgba(tone(P.deep), 1));
+    g.addColorStop(0.5, rgba(tone(mix(P.leaf, P.tip, leaf.light)), 1));
+    g.addColorStop(1, rgba(tone(mix(P.tip, [255, 255, 255], leaf.light * 0.4)), 1));
     leafPath(ctx, leaf.len, leaf.width); ctx.fillStyle = g; ctx.fill();
-    ctx.shadowBlur = 0;
-    if (!f.small) {   // a soft glassy sheen on each lobe, and the vein
-      const sheen = ctx.createRadialGradient(-leaf.len * 0.22, -leaf.len * 0.72, 0, -leaf.len * 0.22, -leaf.len * 0.72, leaf.len * 0.45);
-      sheen.addColorStop(0, `rgba(255,255,255,${0.45 + 0.4 * f.wink})`); sheen.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.fillStyle = sheen; leafPath(ctx, leaf.len, leaf.width); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(0, -leaf.len * 0.12); ctx.lineTo(0, -leaf.len * 0.7);
-      ctx.strokeStyle = rgba(HY.ink, dark ? 0.16 : 0.12); ctx.lineWidth = Math.max(0.5, size * 0.012); ctx.lineCap = 'round'; ctx.stroke();
+    if (!f.small) {   // the vein: one quiet line
+      ctx.beginPath(); ctx.moveTo(0, -leaf.len * 0.16); ctx.lineTo(0, -leaf.len * 0.62);
+      ctx.strokeStyle = `rgba(255,255,255,${P.vein})`; ctx.lineWidth = Math.max(0.5, size * 0.013); ctx.lineCap = 'round'; ctx.stroke();
     }
     ctx.restore();
   }
-  // a sweeping highlight while searching
-  if (f.scan !== null) {
-    ctx.save(); ctx.globalCompositeOperation = 'source-atop';
-    const sx = cx + Math.cos(f.scan) * size * 0.3, sy = cy + Math.sin(f.scan) * size * 0.3;
-    const s = ctx.createRadialGradient(sx, sy, 0, sx, sy, size * 0.22);
-    s.addColorStop(0, 'rgba(255,255,255,.55)'); s.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = s; ctx.fillRect(0, 0, size, size); ctx.restore();
-  }
-  // the heart of the clover
-  const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 0.075);
-  core.addColorStop(0, 'rgba(255,255,255,.95)'); core.addColorStop(1, rgba(HY.mint, 0));
-  ctx.fillStyle = core; ctx.beginPath(); ctx.arc(cx, cy, size * 0.075, 0, TAU); ctx.fill();
-  // sparkles circling (thinking / working), in mint, petal and sun
-  for (const sp of f.sparks) {
-    const c = [HY.mint, HY.petal, HY.sun][sp.hue];
-    const g = ctx.createRadialGradient(cx + sp.x, cy + sp.y, 0, cx + sp.x, cy + sp.y, sp.r * 2.4);
-    g.addColorStop(0, rgba(c, 1)); g.addColorStop(0.4, rgba(c, 0.6)); g.addColorStop(1, rgba(c, 0));
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx + sp.x, cy + sp.y, sp.r * 2.4, 0, TAU); ctx.fill();
-  }
-  // done: a little four-point star twinkles at the top right
-  if (f.sparkle && !f.small) {
-    const x = cx + size * 0.3, y = cy - size * 0.3, r = size * (0.05 + 0.03 * f.sparkle);
-    ctx.fillStyle = rgba(HY.sun, 0.6 + 0.4 * f.sparkle);
-    ctx.beginPath(); ctx.moveTo(x, y - r);
-    for (let k = 1; k <= 8; k++) { const a = -Math.PI / 2 + k * Math.PI / 4, rr = k % 2 ? r * 0.3 : r; ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
-    ctx.fill();
-  }
+  // the heart of the clover: sage at rest, a touch brighter once something is done
+  ctx.beginPath(); ctx.arc(cx, cy, size * (f.small ? 0.05 : 0.042), 0, TAU);
+  ctx.fillStyle = rgba(tone(mix(P.sage, P.tip, f.ripe * 0.5)), 1); ctx.fill();
   ctx.restore();
 };
 
 const MODE_FRAMES = Object.fromEntries(Object.keys(LOOKS).map(k => [k, cloverFrame]));
 const presets = new Map();
-// size: the page's drawing size (20, 32 or 64; anything else works too). Small orbs move a little slower and wobble less.
+// size: the page's drawing size (20, 32 or 64; anything else works too). Small orbs move a little less.
 function resolvePreset(state, size) {
   const mode = LOOKS[state] ? state : LOOKS[ALIAS[state]] ? ALIAS[state] : 'idle', key = mode + '@' + size;
   if (!presets.has(key)) {
     const look = LOOKS[mode], small = size < 40;
     presets.set(key, { mode, speed: look.speed * (small ? 0.85 : 1),
-      opts: { ...look, wobble: look.wobble * (small ? 0.6 : 1), levelReact: !!look.level, level: 0, orbit: size < 26 ? Math.min(1, look.orbit) : look.orbit } });
+      opts: { ...look, wave: look.wave * (small ? 0.8 : 1), levelReact: !!look.level, level: 0 } });
   }
   return presets.get(key);
 }
