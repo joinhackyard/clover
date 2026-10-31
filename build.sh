@@ -1,5 +1,6 @@
 #!/bin/bash
 # Clover by Hackyard: builds Clover.app, starts it at login, and (re)starts it now. Run it again after any change.
+# CLOVER_PACKAGE=<folder> ./build.sh only builds a signed-ad-hoc Clover.app into that folder (CI releases): no install, no restart.
 set -e; cd "$(dirname "$0")"
 VERSION=$(tr -d '\n' < VERSION)
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Invalid VERSION: $VERSION"; exit 1; }
@@ -10,16 +11,18 @@ COMMIT=$(git rev-parse HEAD 2>/dev/null || echo unknown)
 [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 26 ] || { echo "Clover needs macOS 26 or later (it uses Apple's new on-device speech)."; exit 1; }
 xcode-select -p >/dev/null 2>&1 || { echo "Needs Apple's command line tools. Run: xcode-select --install   then run ./build.sh again."; exit 1; }
 command -v python3 >/dev/null || { echo "Clover needs Python 3. Install it, then run ./build.sh again."; exit 1; }
-command -v claude >/dev/null || [ -x ~/.local/bin/claude ] || echo "Note: Claude Code is not installed yet. That is fine: Clover can use your own API key (Claude, OpenAI, Azure OpenAI or any endpoint), Devin or Pi instead."
+command -v claude >/dev/null || [ -x ~/.local/bin/claude ] || echo "Note: Claude Code is not installed yet. That is fine: Clover can use your Antigravity plan or your own API key (Claude, OpenAI, Gemini, Azure and more) instead."
 STAGE=$(mktemp -d)
 trap 'rm -rf "$STAGE"' EXIT
 # A compiler error must leave the installed app and its resources alone.
 swiftc -O -target "$(uname -m)-apple-macos26.0" Clover.swift -o "$STAGE/Clover"
-APP=~/Applications/Clover.app   # in Applications so System Settings can list it for permissions
+APP=${CLOVER_PACKAGE:+$CLOVER_PACKAGE/Clover.app}; APP=${APP:-~/Applications/Clover.app}   # in Applications so System Settings can list it for permissions
+APP=${APP/#\~/$HOME}
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/ui" "$APP/Contents/Resources/sounds"
 cp clover.py clover_engine.py "$APP/Contents/Resources/"
 cp ui/*.html ui/*.js "$APP/Contents/Resources/ui/"
 cp ui/sounds/*.wav "$APP/Contents/Resources/sounds/"   # Clover's own sound pack
+cp ui/sounds/Bloom.wav "$APP/Contents/Resources/"   # notification banners look for their sound here
 cp ui/AppIcon.icns "$APP/Contents/Resources/"
 cat > "$APP/Contents/Info.plist" <<P
 <?xml version="1.0" encoding="UTF-8"?>
@@ -44,6 +47,7 @@ P
 mv "$STAGE/Clover" "$APP/Contents/MacOS/Clover"
 # With a code-signing identity named "Clover Local Signing" in the keychain, macOS keeps permissions across
 # rebuilds and auto-updates; ad hoc signing would ask for every permission again after each one. So make it once.
+if [ -n "$CLOVER_PACKAGE" ]; then codesign -s - --force "$APP"; echo "Packaged $APP"; exit 0; fi   # CI: ad hoc, nothing installed
 ID=$(security find-identity -p codesigning | awk '/Clover Local Signing/{print $2; exit}')
 if [ -z "$ID" ]; then
   K=$(mktemp -d)

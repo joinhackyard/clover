@@ -1,7 +1,7 @@
 #!/bin/sh
 "exec" "python3" "-c" "import importlib.util as u,os,sys;sys.argv=sys.argv[1:];sys.path[0]=os.path.dirname(os.path.abspath(sys.argv[0]));sys.pycache_prefix=os.path.expanduser('~/Library/Caches/Clover');s=u.spec_from_file_location('__main__',sys.argv[0]);m=sys.modules['__main__']=u.module_from_spec(s);s.loader.exec_module(m)" "$0" "$@"   # sh: run from cached bytecode (a plain run recompiles this file, ~70 ms per helper call); Python: a no-op string
 """Clover by Hackyard: a small Mac helper run by an AI client (Claude Code by default, your own API key for Claude,
-OpenAI, Azure OpenAI or any endpoint, Devin, or Pi).
+OpenAI, Azure OpenAI, Gemini and more, or your Antigravity plan).
 
 Hold Control+Option+Space (Clover.app) -> talk -> let go. It answers questions (web, files, screen) and does
 tasks on the Mac. Output lines for the overlay: "· note", "▸ step", "✓ answer".
@@ -585,7 +585,7 @@ DENY = [f'Bash({c}:*)' for c in DENIED]
 def client():
     """The configured AI client name; anything unrecognized falls back to 'claude'."""
     c = pref('client', 'claude')
-    return c if c in ('claude', 'direct', 'devin', 'pi') else 'claude'
+    return c if c in ('claude', 'antigravity', 'direct') else 'claude'
 
 
 def provider():
@@ -635,6 +635,23 @@ def runs_path(t):
     if re.match(r'[a-z][\w+.-]*:', t, re.I) and not t.lower().startswith('file:'): return False   # a web or settings link
     path = os.path.abspath(os.path.expanduser(urllib.parse.unquote(re.sub(r'^file://', '', t, flags=re.I))))
     return not os.path.exists(path) or path.lower().endswith(RUNS) and not (path.endswith('.app') and path.startswith(APP_DIRS)) or os.path.isfile(path) and os.access(path, os.X_OK)
+
+
+AUTO_ASKS = ('Delete something?', 'Buy this?')   # Auto mode still asks before these
+AUTO_WORDS = r'(?i)\b(delete|remove|trash|erase|wipe|buy|purchase|pay|payment|checkout|order|bid|transfer|withdraw|donate)\b'
+
+
+def permission_mode():
+    """Settings → Safety: ask (Allow cards), auto (asks only before deleting or buying) or bypass (never asks).
+    Hard denials (rm, sudo, disk tools, shutdown) hold in every mode."""
+    mode = pref('permissionMode', '')
+    if mode in ('ask', 'auto', 'bypass'): return mode
+    return 'ask' if pref('safe', True) else 'bypass'
+
+
+def auto_allows(text):
+    """Auto mode: this action goes ahead without a card unless it deletes or buys."""
+    return permission_mode() == 'auto' and not re.search(AUTO_WORDS, text or '')
 
 
 def risky(cmd):
@@ -721,7 +738,7 @@ def search_first(ask):
 def gate():
     """AI client's PreToolUse hook: native hands cannot bypass their wrapper; in safe mode a risky command waits for the user's Allow (60 s, then no).
     Allowed = it runs for real, outside the sandbox. The AI asking to leave the sandbox by itself asks too."""
-    external = os.environ.get('CLOVER_CLIENT') in ('devin', 'pi', 'direct')
+    external = os.environ.get('CLOVER_CLIENT') in ('antigravity', 'direct')
     try:
         event = json.load(sys.stdin)
         if not isinstance(event, dict) or not isinstance(event.get('tool_input', {}), dict): raise ValueError('Invalid tool event')
@@ -788,7 +805,8 @@ def gate():
         if answer == 'task': allow_for_task(kind)
         decision(answer in ('y', 'task'), 'The user said no. Do not try another way.')
         return
-    if os.environ.get('CLOVER_AGENT') and pref('safe', True) and event.get('tool_name') in ('Bash', 'Write', 'Edit') and not trusted_read:
+    if os.environ.get('CLOVER_AGENT') and pref('safe', True) and event.get('tool_name') in ('Bash', 'Write', 'Edit') and not trusted_read \
+            and not auto_allows(json.dumps(inp, ensure_ascii=False)):
         kind = action_kind(event['tool_name'], inp)
         answer = 'y' if task_allowed(kind) else ask_user(
             {'q': 'Allow this task action?', 'cmd': (str(inp.get('file_path', '')) + '\n' + json.dumps(inp, ensure_ascii=False)).strip()[:800], 'task': bool(kind)}, 600)
@@ -822,7 +840,8 @@ def gate():
         '--calendar' in tokens and any(t == APP or os.path.basename(t) in ('Clover', 'Clover-real') for t in tokens[:tokens.index('--calendar')])):
         decision(False, 'Use clover.py --hands or --calendar; native actions and safety overrides are not model tools.')
         return
-    q = '' if agent_approved or trusted_read else risky(cmd) or ('Run outside the safe folder?' if inp.get('dangerouslyDisableSandbox') or external and cmd and os.environ.get('CLOVER_CLIENT') != 'direct' else '')
+    q = '' if agent_approved or trusted_read else risky(cmd) or ('Run outside the safe folder?' if inp.get('dangerouslyDisableSandbox') or external and cmd and os.environ.get('CLOVER_CLIENT') not in ('direct', 'antigravity') else '')
+    if permission_mode() == 'auto' and q not in AUTO_ASKS: q = ''
     if not q or not os.environ.get('CLOVER_ASK') or not pref('safe', True):
         if os.environ.get('CLOVER_ASK'): preview_commands(cmd)
         record_external()
@@ -2685,7 +2704,7 @@ def web(cmd, n='', text='', app=None, fresh=False, want='', page=None):
                 c = json.loads(js('name'))
             except ValueError:
                 return 'No such control. Read the page again.'
-            if c.get('submit') or re.search(RISKY_CLICK, c['what'], re.I) and pref('safe', True):
+            if (c.get('submit') or re.search(RISKY_CLICK, c['what'], re.I) and pref('safe', True)) and not auto_allows(c['what']):
                 if not os.environ.get('CLOVER_ASK'):   # a saved shortcut has no Allow card: never click these blind
                     return 'This click needs the user\'s confirmation. Ask through Clover, not a shortcut.'
                 if not task_allowed('web click'):
@@ -2949,7 +2968,7 @@ def hands(*args):
                 if not (re.search(r'\b(type|enter|fill|paste)\b', request, re.I) and re.search(r'\b(password|passcode|pin|secret|secure|verification|one.time|otp|card|cvv|ssn|token|account|routing)\b', request, re.I)) or re.search(r"\b(don.t|do not|never)\s+(type|enter|fill|paste)\b", request, re.I):
                     denied.append('Secure field: the user must explicitly request typing into it.')
                     return False
-            if check.get('risky') and pref('safe', True) and not task_allowed('hands ' + args[0]):
+            if check.get('risky') and pref('safe', True) and not task_allowed('hands ' + args[0]) and not auto_allows(' '.join(labels)):
                 what = ' → '.join(labels) or args[0]
                 if not os.environ.get('CLOVER_ASK'):
                     denied.append(f'Safe mode: {args[0]} "{what}" needs the user’s Allow card.')
@@ -3358,6 +3377,11 @@ BUDGET = {'usd': 0.002, 'secs': 6}   # median of the last 50 AI asks must stay u
 
 
 def notify(text):
+    """A banner from the Clover app itself (named and iconed Clover); AppleScript only when the app is not running."""
+    try:
+        if subprocess.run([APP, '--notify', str(text)[:2000]], capture_output=True, timeout=5).returncode == 0: return
+    except (OSError, subprocess.TimeoutExpired):
+        pass
     osa('on run argv\ndisplay notification (item 1 of argv) with title "Clover" sound name "Glass"\nend run', text)
 
 
@@ -3755,8 +3779,7 @@ def tip(reply, taught=''):
 def plan():
     """Can Clover think? The configured AI client must be installed and signed in.
     -> {'ok': bool, 'need': '' | 'install' | 'login' | 'upgrade', 'client': name, 'text': one line for the user}"""
-    if client() == 'devin': return {**devin_plan(), 'client': 'devin'}
-    if client() == 'pi': return {**pi_plan(), 'client': 'pi'}
+    if client() == 'antigravity': return {**antigravity_plan(), 'client': 'antigravity'}
     if client() == 'direct': return {**direct_plan(), 'client': 'direct'}
     return {**claude_plan(), 'client': 'server' if server() else 'claude'}
 
@@ -3802,84 +3825,188 @@ def direct_plan():
     return {'ok': True, 'need': '', 'text': f'Using {clover_engine.describe(cfg)} with your key.'}
 
 
-def devin_plan():
-    """Devin must be installed and signed in (`devin auth login`)."""
-    if not shutil.which('devin'):
-        return {'ok': False, 'need': 'install', 'text': 'Devin is not installed.'}
+def agy_path():
+    """The Antigravity CLI: on PATH, or where its installer puts it."""
+    found = shutil.which('agy')
+    if found: return found
+    for path in (os.path.join(HOME, '.local/bin/agy'), os.path.join(HOME, '.antigravity/bin/agy'), '/opt/homebrew/bin/agy', '/usr/local/bin/agy'):
+        if os.access(path, os.X_OK): return path
+    return ''
+
+
+def antigravity_plan():
+    """Antigravity runs on the user's own Google sign-in (the agy CLI keeps it in the keychain): no API key."""
+    agy = agy_path()
+    if not agy:
+        return {'ok': False, 'need': 'install', 'text': 'Antigravity CLI is not installed.'}
+    try:   # read-only: answers without starting an agent turn or spending quota
+        r = subprocess.run([agy, '-p', '/usage', '--output-format', 'json'], capture_output=True, text=True, timeout=25, cwd=tempfile.gettempdir(),
+                           stdin=subprocess.DEVNULL)
+    except (OSError, subprocess.TimeoutExpired):
+        return {'ok': False, 'need': 'login', 'text': 'Could not read your Antigravity sign-in.'}
+    if r.returncode:
+        detail = (r.stderr or r.stdout or '').lower()
+        if re.search(r'log ?in|sign.?in|auth|credential|expired', detail):
+            return {'ok': False, 'need': 'login', 'text': 'Sign in to Antigravity to start.'}
+        return {'ok': False, 'need': 'login', 'text': 'Antigravity did not answer. Open it once with agy, then try again.'}
+    return {'ok': True, 'need': '', 'text': 'Using your Antigravity plan.'}
+
+
+AGY_READS = re.compile(r'(?i)(^|_)(view|read|list|find|grep|search|glob|ls|open_file|get|fetch_url|read_url)')
+AGY_WRITES = re.compile(r'(?i)(write|edit|replace|create|delete|move|rename)')
+
+
+def agy_event(raw):
+    """An agy PreToolUse payload -> the event Clover's gate understands (tool name in its external vocabulary)."""
+    call = raw.get('toolCall') if isinstance(raw.get('toolCall'), dict) else raw
+    name = str(call.get('name') or call.get('toolName') or raw.get('tool_name') or raw.get('toolName') or '')
+    args = call.get('args') if isinstance(call.get('args'), dict) else call.get('arguments') if isinstance(call.get('arguments'), dict) else {}
+    command = args.get('CommandLine') or args.get('commandLine') or args.get('command')
+    if command or name == 'run_command':
+        return {'tool_name': 'exec', 'tool_input': {'command': str(command or '')}}
+    path = args.get('AbsolutePath') or args.get('TargetFile') or args.get('path') or args.get('file_path') or args.get('Url') or args.get('url') or ''
+    if AGY_WRITES.search(name):
+        return {'tool_name': 'write', 'tool_input': {'file_path': str(path)}}
+    if re.search(r'(?i)url|web|browser', name):
+        return {'tool_name': 'webfetch' if AGY_READS.search(name) else name, 'tool_input': {'url': str(path)}}
+    if AGY_READS.search(name):
+        return {'tool_name': 'read', 'tool_input': {'file_path': str(path)}}
+    return {'tool_name': name or 'unknown', 'tool_input': args}
+
+
+def agy_gate():
+    """Antigravity's PreToolUse hook: the same gate as every other client. Prints {"allow_tool", "deny_reason"}; fails closed."""
+    import contextlib, io
     try:
-        s = subprocess.run(['devin', 'auth', 'status'], capture_output=True, text=True, timeout=20)
-    except subprocess.TimeoutExpired:
-        return {'ok': False, 'need': 'login', 'text': 'Could not read your Devin sign-in.'}
-    if s.returncode:
-        return {'ok': False, 'need': 'login', 'text': 'Sign in to Devin to start.'}
-    return {'ok': True, 'need': '', 'text': 'Using your Devin plan.'}
+        event = agy_event(json.load(sys.stdin))
+        ask = os.environ.get('CLOVER_ASK', '')
+        if event['tool_name'] == 'write':   # file changes stay in this ask's own folder
+            target = os.path.realpath(os.path.expanduser(event['tool_input'].get('file_path') or '/'))
+            ok = bool(ask) and target.startswith(os.path.realpath(ask) + os.sep)
+            return print(json.dumps({'allow_tool': ok, 'deny_reason': '' if ok else 'Clover keeps file changes in its own folder. Use the Clover helpers to change things on the Mac.'}))
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), patch_stdin(json.dumps(event)):
+            try: gate()
+            except SystemExit: pass
+        answer = json.loads(out.getvalue().strip().splitlines()[-1])
+        ok = answer.get('decision') == 'approve'
+        print(json.dumps({'allow_tool': ok, 'deny_reason': '' if ok else answer.get('reason') or 'Clover blocked this tool call.'}))
+    except Exception:
+        print(json.dumps({'allow_tool': False, 'deny_reason': 'Clover could not verify this tool call.'}))
 
 
-def pi_plan():
-    """Pi owns its provider, model and sign-in; Clover only needs its CLI."""
-    if not shutil.which('pi'):
-        return {'ok': False, 'need': 'install', 'text': 'Pi is not installed.'}
-    return {'ok': True, 'need': '', 'text': 'Using the provider and model selected in Pi.'}
+class patch_stdin:
+    def __init__(self, text): self.text = text
+    def __enter__(self):
+        import io
+        self.old, sys.stdin = sys.stdin, io.StringIO(self.text)
+    def __exit__(self, *_): sys.stdin = self.old
 
 
-def devin_config(directory):
-    """An isolated Devin project with only the Claude-equivalent tools, every call gated."""
-    folder = os.path.join(directory, '.devin')
-    os.makedirs(folder)
-    available = ['read', 'grep', 'glob', 'exec', 'Fetch(*)']
-    deny = ['edit', 'Write(**)', 'mcp__*']
-    config = {
-        'read_config_from': {name: False for name in ('agents_standard', 'cursor', 'windsurf', 'claude', 'copilot', 'opencode', 'zed')},
-        'permissions': {'allow': available, 'deny': deny + [f'Exec({cmd})' for cmd in DENIED]},
-    }
-    config['hooks'] = {'PreToolUse': [{'matcher': '.*', 'hooks': [{
-        'type': 'command', 'command': f'CLOVER_CLIENT=devin /bin/sh "{ME}" --gate || exit 2', 'timeout': 140}]}]}
-    path = os.path.join(folder, 'config.json')
-    with open(path, 'w') as f:
-        json.dump(config, f)
-    return path
+def agy_workspace(ask):
+    """This ask's folder as an Antigravity workspace whose hooks send every tool call through Clover's gate."""
+    folder = os.path.join(ask, '.agents')
+    os.makedirs(folder, exist_ok=True)
+    command = f'/bin/sh {shlex.quote(ME)} --agy-gate'
+    hooks = {'clover-gate': {'PreToolUse': [{'matcher': '.*', 'hooks': [{'type': 'command', 'command': command, 'timeout': 140}]}]}}
+    private_json(os.path.join(folder, 'hooks.json'), hooks)
+    return command
 
 
-def delete_devin_session(directory):
-    """Delete the one CLI session created in this per-ask working directory."""
+def agy_hooks_loaded(agy, ask, env):
+    """True only if agy reports Clover's hook for this workspace: never skip agy's own prompts without it."""
     try:
-        result = subprocess.run(['devin', 'list', '--format', 'json'], cwd=directory, capture_output=True, text=True, timeout=10)
-        if result.returncode:
-            return False
-        rows = json.loads(result.stdout)
-        rows = rows.get('sessions', []) if isinstance(rows, dict) else rows
-        row = next((r for r in rows if os.path.realpath(r.get('cwd') or '') == os.path.realpath(directory)), None)
-        session = (row or {}).get('id') or (row or {}).get('session_id')
-        return bool(session) and not subprocess.run(
-            ['devin', 'rm', session, '--force'], cwd=directory, capture_output=True, timeout=10).returncode
-    except (OSError, ValueError, TypeError, AttributeError, subprocess.TimeoutExpired):
+        r = subprocess.run([agy, '-p', '/hooks', '--output-format', 'json'], cwd=ask, env=env, capture_output=True, text=True, timeout=25, stdin=subprocess.DEVNULL)
+    except (OSError, subprocess.TimeoutExpired):
         return False
+    return r.returncode == 0 and '--agy-gate' in r.stdout
 
 
-def stop_devin(p, directory):
-    stop_claude(p)
-    delete_devin_session(directory)
+def agy_answer(value):
+    """The final answer from agy's --output-format json result, whatever its exact field is called."""
+    if isinstance(value, str): return value
+    if isinstance(value, dict):
+        for key in ('result', 'response', 'final_response', 'output', 'text', 'message', 'content', 'answer'):
+            if key in value:
+                found = agy_answer(value[key])
+                if found.strip(): return found
+        return ''
+    if isinstance(value, list):
+        return '\n'.join(filter(None, (agy_answer(v) for v in value)))
+    return ''
 
 
-PI_GATE = r'''
-import { spawnSync } from "node:child_process";
-export default function (pi) {
-  const names = { bash: "exec", read: "read", grep: "grep", find: "glob", ls: "read" };
-  pi.on("tool_call", (event, ctx) => {
-    const payload = JSON.stringify({ tool_name: names[event.toolName] || event.toolName, tool_input: event.input, cwd: ctx.cwd });
-    const result = spawnSync("/bin/sh", [process.env.CLOVER_ME, "--gate"], {
-      input: payload, encoding: "utf8", env: { ...process.env, CLOVER_CLIENT: "pi" }
-    });
-    try {
-      const answer = JSON.parse((result.stdout || "").trim().split("\n").at(-1));
-      if (result.status === 0 && answer.decision === "approve") return;
-      return { block: true, reason: answer.reason || "Clover blocked this tool call." };
-    } catch {
-      return { block: true, reason: "Clover could not verify this tool call." };
-    }
-  });
-}
-'''
+def run_antigravity(task, shots=(), request=None):
+    """One confirmed request through `agy -p`, on the user's Antigravity plan. Clover's gate runs as its PreToolUse hook."""
+    run.cmds = run.ran = []
+    run.error = ''
+    run.ok = False
+    run.why = ''
+    agy = agy_path()
+    if not agy:
+        run.why = 'setup_needed'
+        say('!', 'setup')
+        return 'Install the Antigravity CLI, then open Clover Settings to finish setup.', 0, []
+    if not wait_commit():
+        run.why = 'cancelled'
+        return 'The request was cancelled before the transcript was confirmed.', 0, []
+    ask = tempfile.mkdtemp(prefix='clover-ask-')
+    atexit.register(shutil.rmtree, ask, True)
+    save_request(ask, main_ask(task, request)[0])
+    agy_workspace(ask)
+    env = {**os.environ, 'CLOVER_ASK': ask, 'CLOVER_CLIENT': 'antigravity'}
+    prompt = system_prompt(ASK_FIRST if pref('safe', True) else NEVER)
+    if shots:
+        prompt += '\nScreen pictures (open them with your file viewer): ' + ', '.join(path for path, _ in shots)
+    prompt += '\n\n' + '\n\n'.join(b['text'] for b in user_content(task, request=request))
+    gated = agy_hooks_loaded(agy, ask, env)
+    model = str(pref('agyModel', '')).strip()
+    args = [agy, '-p', prompt, '--output-format', 'json'] + (['--model', model] if model else []) + (['--dangerously-skip-permissions'] if gated else [])
+    if not gated: say('·', 'Antigravity did not load Clover’s safety hook, so it can only answer, not act.')
+    errors = tempfile.TemporaryFile(mode='w+')
+    try:
+        p = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=errors, text=True, cwd=ask, start_new_session=True, env=env)
+    except BaseException:
+        errors.close()
+        raise
+    p.ask, p.errors = ask, errors
+    atexit.register(errors.close); atexit.register(stop_claude, p)
+    signal.signal(signal.SIGTERM, lambda *_: (stop_claude(p), stop_workers()))
+    p.relay_thread = threading.Thread(target=relay, args=(p,), daemon=True); p.relay_thread.start()
+    timed_out = False
+    try:
+        out, _ = p.communicate(timeout=240)
+    except subprocess.TimeoutExpired:
+        timed_out = True
+        stop_claude(p)
+        out = ''
+    p.relay_thread.join(.3)
+    try: result = json.loads(out) if out.strip() else {}
+    except ValueError: result = {'result': out}
+    reply = without_handoff_line(agy_answer(result)).strip()
+    rows = read_rows(os.path.join(ask, 'antigravity-tools.jsonl'))
+    steps = [row.get('step', '') for row in rows if row.get('step')]
+    run.ran = [row['input']['command'] for row in rows if row.get('tool') == 'exec' and row.get('input', {}).get('command')]
+    status = str(result.get('status', '')).upper() if isinstance(result, dict) else ''
+    errors.seek(0); detail = errors.read(2000).strip()
+    if timed_out:
+        run.why, reply = 'timed_out', 'Antigravity took too long, so I stopped it. Please try again.'
+    elif p.returncode or status in ('ERROR', 'CANCELED', 'INTERRUPTED', 'INVALID'):
+        run.error = clean(detail or status)
+        run.why = failure_why(detail or status)
+        if re.search(r'auth|log ?in|sign.?in|expired', detail, re.I):
+            run.why = 'signed_out'
+            say('!', 'setup')
+            reply = 'Antigravity needs you to sign in again. Run agy once in Terminal, then try again.'
+        elif not reply:
+            reply = f'Antigravity stopped: {clean(detail) or status or f"exit code {p.returncode}"}.'
+    run.ok = bool(reply) and not run.why
+    run.cmds = run.ran if run.ok else []
+    if not run.why and os.path.exists(os.path.join(ask, 'declined')): run.ok, run.why, run.cmds = False, 'cancelled', []
+    if not reply and not run.why: run.why = 'no_reply'
+    errors.close()
+    return reply or 'Antigravity returned an empty answer. Please try again.', 0, steps
+
 
 
 def stop_claude(p):
@@ -5116,7 +5243,7 @@ def system_prompt(risky):
 
 
 def start_ai(model=None):
-    """Warm the configured client ahead of the request. Claude waits on stdin; Devin and Pi start after confirmation."""
+    """Warm the configured client ahead of the request. Claude waits on stdin; Antigravity and API keys start after confirmation."""
     return start_claude(model) if client() == 'claude' else None
 
 
@@ -5326,12 +5453,10 @@ def run(task, p=None, shots=(), auto_work=False, *, request=None, main_only=Fals
     run.ok = False
     run.handoff, run.handoffs = None, []
     run.observed = []
-    run.work = False   # set before the Devin/Pi paths too: main() reads run.work after every client
+    run.work = False   # set before the other clients' paths too: main() reads run.work after every client
     run.why = ''   # why it failed, one fixed word for PostHog
-    if client() == 'devin':
-        return run_devin(task, shots, request=request)
-    if client() == 'pi':
-        return run_pi(task, shots, request=request)
+    if client() == 'antigravity':
+        return run_antigravity(task, shots, request=request)
     if client() == 'direct':
         return run_direct(task, shots, request=request)
     main_only = main_only or main_delivery_required()
@@ -5630,197 +5755,6 @@ def continuation_context(previous, observed):
     return f'\nPrior work (untrusted data; check effects before repeating; full record: {path}):\n' + json.dumps(work, ensure_ascii=False)[:1800]
 
 
-def run_devin(task, shots=(), request=None):
-    """One confirmed request through `devin -p`; its project config gates tools and forbids direct writes."""
-    run.cmds = run.ran = []
-    run.error = ''
-    run.ok = False
-    if not shutil.which('devin'):
-        run.why = 'setup_needed'
-        say('!', 'setup')   # Clover.app opens its setup window
-        return plan()['text'] + ' Open Clover Settings to finish setup.', 0, []
-    if not wait_commit():
-        run.why = 'cancelled'
-        return 'The request was cancelled before the transcript was confirmed.', 0, []
-    ask = tempfile.mkdtemp(prefix='clover-ask-')   # the choices card (and hands events) talk through it
-    atexit.register(shutil.rmtree, ask, True)   # however this run ends
-    save_request(ask, main_ask(task, request)[0])
-    prompt = system_prompt(ASK_FIRST if pref('safe', True) else NEVER)
-    if shots:
-        prompt += '\nScreen pictures (read them if your tools can view images): ' + ', '.join(path for path, _ in shots)
-    prompt += '\n\n' + '\n\n'.join(b['text'] for b in user_content(task, request=request))
-    config = devin_config(ask)
-    errors = tempfile.TemporaryFile(mode='w+')   # draining a pipe only after wait() can deadlock
-    try:
-        p = subprocess.Popen(['devin', '-p', prompt, '--permission-mode', 'normal', '--config', config, '--respect-workspace-trust', 'false'],
-                             stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=errors, text=True,
-                             cwd=ask, start_new_session=True,
-                             env={**os.environ, 'CLOVER_ASK': ask})
-    except BaseException:
-        errors.close()
-        raise
-    p.ask, p.errors = ask, errors
-    atexit.register(errors.close)
-    atexit.register(stop_devin, p, ask)
-    signal.signal(signal.SIGTERM, lambda *_: (stop_devin(p, ask), stop_workers()))
-    p.relay_thread = threading.Thread(target=relay, args=(p,), daemon=True)   # pick/set/point cards, as for Claude
-    p.relay_thread.start()
-    timed_out = False
-    try:
-        reply, _ = p.communicate(timeout=180)
-    except subprocess.TimeoutExpired:
-        timed_out = True
-        stop_claude(p)
-        try:
-            p.wait(timeout=2)
-        except subprocess.TimeoutExpired:
-            pass
-        reply = 'Devin timed out before finishing. Please try again.'
-        run.error = reply
-    reply = without_handoff_line(reply)
-    p.relay_thread.join(.3)
-    deleted = delete_devin_session(ask)
-    rows = read_rows(os.path.join(ask, 'devin-tools.jsonl'))
-    steps = [row.get('step', '') for row in rows if row.get('step')]
-    run.ran = [row['input']['command'] for row in rows if row.get('tool') == 'exec' and row.get('input', {}).get('command')]
-    if p.returncode and not timed_out:
-        c = plan()   # the usual cause: not installed or signed out
-        if not c['ok']:
-            say('!', 'setup')
-        p.errors.seek(0)
-        detail = p.errors.read(200).strip() or reply[:200]
-        run.error = clean(detail)
-        run.why = failure_why(detail) if c['ok'] else 'setup_needed'
-        if not c['ok']:
-            if c.get('need') == 'login': run.why = 'signed_out'
-            reply = c['text'] + ' Open Clover Settings to finish setup.'
-        else:
-            say('!', 'setup')
-            reply = f'Devin stopped: {clean(detail) or f"exit code {p.returncode}"}. Open Clover Settings, choose Set Up, then try again.'
-    success = bool(reply and not p.returncode and not timed_out)
-    if not deleted:
-        warning = 'Clover could not delete Devin’s saved session. Remove it in Devin before continuing.'
-        reply = f'{reply} {warning}'.strip()
-    run.ok = success
-    if not success and timed_out: run.why = 'timed_out'
-    if not run.why and os.path.exists(os.path.join(ask, 'declined')): run.ok, run.why = False, 'cancelled'
-    if p.stdout:
-        p.stdout.close()
-    errors.close()
-    return reply or 'Devin returned an empty answer. Please try again.', 0, steps
-
-
-def run_pi(task, shots=(), request=None):
-    """One confirmed request through Pi's selected provider/model; an explicit extension sends every tool through Clover's gate."""
-    run.cmds = run.ran = []
-    run.error = ''
-    run.ok = False
-    pi = shutil.which('pi')
-    if not pi:
-        run.why = 'setup_needed'
-        say('!', 'setup')
-        return plan()['text'] + ' Open Clover Settings to finish setup.', 0, []
-    if not wait_commit():
-        run.why = 'cancelled'
-        return 'The request was cancelled before the transcript was confirmed.', 0, []
-    ask = tempfile.mkdtemp(prefix='clover-ask-')
-    atexit.register(shutil.rmtree, ask, True)
-    save_request(ask, main_ask(task, request)[0])
-    extension = os.path.join(ask, 'clover-gate.ts')
-    with open(extension, 'w') as f:
-        f.write(PI_GATE)
-    errors = tempfile.TemporaryFile(mode='w+')
-    args = [pi, '--mode', 'json', '--print', '--no-session', '--no-mcp', '--no-skills', '--no-prompt-templates',
-            '--no-context-files', '--no-extensions', '--extension', extension,
-            '--system-prompt', system_prompt(ASK_FIRST if pref('safe', True) else NEVER),
-            '--tools', 'bash,read,grep,find,ls', '--'] + ['@' + path for path, _ in shots if os.path.exists(path)] + ['\n\n'.join(b['text'] for b in user_content(task, request=request))]
-    env = {**os.environ, 'CLOVER_ASK': ask, 'CLOVER_CLIENT': 'pi', 'CLOVER_ME': ME}
-    try:
-        p = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=errors, text=True,
-                             cwd=ask, start_new_session=True, env=env)
-    except BaseException:
-        errors.close()
-        raise
-    p.ask, p.errors = ask, errors
-    atexit.register(errors.close); atexit.register(stop_claude, p)
-    signal.signal(signal.SIGTERM, lambda *_: (stop_claude(p), stop_workers()))
-    p.relay_thread = threading.Thread(target=relay, args=(p,), daemon=True); p.relay_thread.start()
-    reply, cost, failed, timed_out = '', 0, False, [False]
-    model_error, aborted = '', False
-    def expire():
-        timed_out[0] = True
-        stop_claude(p)
-    deadline = threading.Timer(180, expire); deadline.daemon = True; deadline.start()
-    try:
-        for line in p.stdout:
-            try: event = json.loads(line)
-            except ValueError: continue
-            if not isinstance(event, dict): continue
-            if event.get('type') == 'tool_execution_end':
-                failed = bool(event.get('isError'))
-            else:
-                message = event.get('message')
-                if event.get('type') != 'message_end' or not isinstance(message, dict) or message.get('role') != 'assistant': continue
-                aborted = message.get('stopReason') == 'aborted'
-                model_error = (message.get('errorMessage') or 'Request failed') if message.get('stopReason') == 'error' else ''
-                if not isinstance(model_error, str): model_error = 'Request failed'
-                content = message.get('content', [])
-                if isinstance(content, str): reply = without_handoff_line(content)
-                elif isinstance(content, list): reply = without_handoff_line(''.join(block.get('text', '') for block in content if isinstance(block, dict) and block.get('type') == 'text' and isinstance(block.get('text'), str)))
-                usage = message.get('usage') if isinstance(message.get('usage'), dict) else {}
-                costs = usage.get('cost') if isinstance(usage.get('cost'), dict) else {}
-                if type(costs.get('total')) in (int, float): cost += costs['total']
-        p.wait()
-    finally:
-        deadline.cancel()
-        if sys.exc_info()[0] is not None and p.poll() is None: stop_claude(p)
-    p.relay_thread.join(.3)
-    rows = read_rows(os.path.join(ask, 'pi-tools.jsonl'))
-    steps = [row.get('step', '') for row in rows if row.get('step')]
-    cmds = [row['input']['command'] for row in rows if row.get('tool') == 'exec' and row.get('input', {}).get('command')]
-    run.ran = cmds
-    errors.seek(0); detail = model_error or errors.read(2000).strip()
-    run.cmds = [] if failed or p.returncode or timed_out[0] or model_error or aborted or not reply else cmds
-    run.ok = bool(reply and not failed and not p.returncode and not timed_out[0] and not model_error and not aborted)
-    if timed_out[0]:
-        run.why = 'timed_out'
-        reply = 'Pi timed out before finishing. Please try again.'
-    elif aborted:
-        run.why = 'cancelled'
-        reply = 'The Pi request was cancelled.'
-    elif p.returncode or model_error or (not reply and detail):
-        run.error = clean(detail)
-        run.why = failure_why(detail)
-        if run.why == 'stopped' and re.search(r'auth|credential|model|provider|login', detail, re.I): run.why = 'provider_needed'
-        reason = clean(detail) or f'exit code {p.returncode}'
-        if run.why in ('signed_out', 'provider_needed'):
-            say('!', 'setup')
-            reply = 'Pi needs a provider and model. Open Clover Settings, choose Set Up, then try again.'
-        elif run.why == 'too_long':
-            reply = 'This request is too long for Pi. Close this box with ✕ to start fresh, then ask again with less text.'
-        elif run.why == 'plan_limit':
-            reply = f'Pi stopped: {reason}. Please try again after the limit resets.'
-        elif run.why == 'rate_limited':
-            reply = f'Pi stopped: {reason}. Pi is temporarily rate-limited. Please try again in a moment.'
-        elif run.why == 'offline':
-            reply = f'Pi stopped: {reason}. Pi could not connect. Check your internet connection and try again.'
-        elif run.why == 'unavailable':
-            reply = f'Pi stopped: {reason}. Pi is temporarily unavailable. Please try again.'
-        elif run.why == 'outdated':
-            reply = 'Update Pi, then try again.'
-        else:
-            say('!', 'setup')
-            reply = f'Pi stopped: {reason}. Open Clover Settings, choose Set Up, then try again.'
-    elif not reply and failed:
-        run.why = 'tool_failed'
-        reply = 'The last Pi tool failed, so I could not verify that the request was completed. Please try again.'
-    if not reply and not run.why: run.why = 'no_reply'
-    if p.stdout:
-        p.stdout.close()
-    errors.close()
-    if not run.why and os.path.exists(os.path.join(ask, 'declined')): run.ok, run.why, run.cmds = False, 'cancelled', []
-    return reply or 'Pi returned an empty answer. Please try again.', cost, steps
-
 
 DIRECT_NOTE = """
 Tools here: bash runs one shell command (zsh) and is the Bash above; read_file is Read (pictures come back as images).
@@ -5921,6 +5855,7 @@ def run_direct(task, shots=(), request=None):
     run.cmds = run.ran = []
     run.error = ''
     run.ok = False
+    run.why = ''
     cfg = provider()
     issue = clover_engine.problem(cfg)
     if issue:
@@ -7471,7 +7406,7 @@ def feedback(data):
     text = str(data.get('text', '')).strip()[:4000]   # what the user typed in Settings; they see it in the preview before it goes anywhere
     body = (f'## What happened\n\n{text}\n\n' if text else '## What happened\n\n\n## What you expected\n\n\n') + ('## Clover\n'
             f'Version: {APP_VERSION}\nVersion / commit: {str(data.get("version", "unknown"))[:80]}\nmacOS: {platform.mac_ver()[0]}\nMac model: {mac}\n'
-            f'AI client: {client()}\nModel: {model}\nRouting: {routing_mode()}\nSafe mode: {"on" if pref("safe", True) else "off"}\n'
+            f'AI client: {client()}\nModel: {model}\nRouting: {routing_mode()}\nPermissions: {permission_mode()}\n'
             f'Input: {"type" if pref("input", "voice") == "type" else "voice"}\n'
             f'Shortcut: {"toggle" if pref("talkMode", "hold") == "toggle" else "hold"}\n')
     if data.get('include') is True:
@@ -7488,7 +7423,7 @@ def main():
         except (TypeError, ValueError): pass
         return
     if len(args) == 5 and args[:3] == ['--telemetry', 'error', 'worker_exit']:
-        return report_error('worker_exit', worker=args[3] if args[3] in ('python', 'claude', 'devin', 'pi') else 'python',
+        return report_error('worker_exit', worker=args[3] if args[3] in ('python', 'claude', 'antigravity') else 'python',
                             exit=int(args[4]) if args[4].lstrip('-').isdigit() else -1)
     if args == ['--telemetry', 'error', 'native', 'mic_start']:
         return report_error('native', stage='mic_start')
@@ -7512,7 +7447,7 @@ def main():
     if args == ['--routine-pop']:
         return print(json.dumps(routine_pop()))
     if args[:1] == ['--agent-notify']:
-        return osa('on run argv\ndisplay notification (item 1 of argv) with title "Clover"\nend run', ' '.join(args[1:])[:2000])
+        return notify(' '.join(args[1:])[:2000])
     if args == ['--agents']:
         return agents_service()
     if args == ['--feedback']:
@@ -7592,6 +7527,8 @@ def main():
         return sys.exit(0 if ok else 1)
     if args == ['--gate']:
         return gate()
+    if args == ['--agy-gate']:
+        return agy_gate()
     if args in (['--provider-test'], ['--provider-models']):
         return provider_command(args)
     if args == ['--models']:
@@ -8061,7 +7998,7 @@ def main():
             and not (os.path.exists(asked) and Path(asked).read_text() == time.strftime('%Y-%m-%d')):
         Path(asked).write_text(time.strftime('%Y-%m-%d')); say('!', 'improve')
     if os.environ.get('CLOVER_UI') != '1':   # typed from the menu bar: no overlay, so a notification
-        osa('on run argv\ndisplay notification (item 1 of argv) with title "Clover"\nend run', reply)
+        notify(reply)
 
 
 def run_main():

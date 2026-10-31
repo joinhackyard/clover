@@ -1,0 +1,25 @@
+name: Bug report
+description: Something in Clover didn't work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you asked or did, what Clover did, and what you expected.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Clover version
+      description: Settings → About & Updates
+  - type: dropdown
+    id: provider
+    attributes:
+      label: AI provider
+      options: [Claude Code, Antigravity, API key (Claude), API key (OpenAI), API key (Azure OpenAI), API key (other), Not sure]
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version

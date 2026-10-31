@@ -387,7 +387,7 @@ print(json.dumps({{"type": "result", "is_error": True, "result": "Authentication
         for mode in ('cheapest','balanced','capable'):
             brain, start, ask, _ = self.routing_ask({'routing':mode}, [], quick='Done instantly.')
             brain.assert_not_called(); start.assert_not_called(); ask.assert_not_called()
-        for prefs in ({'client':'devin'}, {'client':'pi'}, {'apiBase':'https://fixture.invalid'}):
+        for prefs in ({'client':'antigravity'}, {'client':'direct'}, {'apiBase':'https://fixture.invalid'}):
             brain, start, ask, _ = self.routing_ask(prefs, [('Answer.',True,[])])
             self.assertEqual(brain.call_count,1); start.assert_not_called()
             self.assertNotIn(clover.MODEL_OFFER,brain.call_args.args[0])
@@ -803,270 +803,140 @@ print(json.dumps(clover.look(cleanup=sys.argv[3] != 'standalone')))
             move.record(use)
             self.assertIn('w', move.trace)
 
-    def test_devin_gate_blocks_before_confirmation_and_records_confirmed_steps(self):
-        with tempfile.TemporaryDirectory() as root, patch.dict(os.environ, {'CLOVER_ASK': root, 'CLOVER_CLIENT': 'devin'}):
-            event = {'tool_name': 'exec', 'tool_input': {'command': 'echo hello'}}
-            with patch.object(clover, 'wait_commit', return_value=False), \
-                 patch('sys.stdin', io.StringIO(json.dumps(event))), patch('sys.stdout', new_callable=io.StringIO) as out:
-                clover.gate()
-            self.assertEqual(json.loads(out.getvalue())['decision'], 'block')
-            self.assertFalse(Path(root, 'devin-tools.jsonl').exists())
-            with patch.object(clover, 'wait_commit', return_value=True), patch.object(clover, 'pref', return_value=False), patch.object(clover, 'preview_commands'), \
-                 patch('sys.stdin', io.StringIO(json.dumps(event))), patch('sys.stdout', new_callable=io.StringIO) as out:
-                clover.gate()
-            row = json.loads(Path(root, 'devin-tools.jsonl').read_text())
-            self.assertEqual(json.loads(out.getvalue())['decision'], 'approve')
-            self.assertEqual(row['input']['command'], 'echo hello')
-            self.assertTrue(any(p.name.startswith('hands-devin-') for p in Path(root).iterdir()))
-            blocked = {'tool_name': 'write', 'tool_input': {'path': '/tmp/file'}}
-            with patch.object(clover, 'wait_commit', return_value=True), \
-                 patch('sys.stdin', io.StringIO(json.dumps(blocked))), patch('sys.stdout', new_callable=io.StringIO) as out:
-                clover.gate()
-            self.assertEqual(json.loads(out.getvalue())['decision'], 'block')
 
-    def test_devin_does_not_start_before_confirmation(self):
-        with tempfile.TemporaryDirectory() as root:
-            fake, marker = Path(root, 'devin'), Path(root, 'started')
-            fake.write_text(f'#!{sys.executable}\nfrom pathlib import Path\nPath({str(marker)!r}).touch()\n')
-            fake.chmod(0o755)
-            with patch.dict(os.environ, {'PATH': root + os.pathsep + os.environ['PATH']}), \
-                 patch.object(clover, 'wait_commit', return_value=False):
-                reply, _, _ = clover.run_devin('unconfirmed')
-            self.assertIn('cancelled', reply)
-            self.assertFalse(marker.exists())
 
-    def test_devin_uses_normal_mode_gate_and_deny_rules(self):
-        with tempfile.TemporaryDirectory() as root:
-            fake, log, removed = Path(root, 'devin'), Path(root, 'launch.json'), Path(root, 'removed')
-            fake.write_text(f'''#!{sys.executable}
-import json, os, sys
-from pathlib import Path
-if sys.argv[1:3] == ['auth', 'status']: raise SystemExit(0)
-if sys.argv[1:3] == ['list', '--format']:
-    print(json.dumps([{{'id': 'fixture-session', 'cwd': os.getcwd()}}])); raise SystemExit(0)
-if sys.argv[1:2] == ['rm']:
-    Path(os.environ['DEVIN_REMOVED']).write_text(' '.join(sys.argv[1:])); raise SystemExit(0)
-Path(os.environ['DEVIN_LOG']).write_text(json.dumps(sys.argv[1:]))
-print('Ready.')
-''')
-            fake.chmod(0o755)
-            previous = signal.getsignal(signal.SIGTERM)
-            try:
-                with patch.dict(os.environ, {'PATH': root + os.pathsep + os.environ['PATH'], 'DEVIN_LOG': str(log), 'DEVIN_REMOVED': str(removed)}), \
-                     patch.object(clover, 'pref', side_effect=lambda k, d: 'devin' if k == 'client' else False if k == 'safe' else d):
-                    self.assertEqual(clover.run_devin('Context: old Request: distractor', request='Write a note titled Request: Vacation')[0], 'Ready.')
-            finally:
-                signal.signal(signal.SIGTERM, previous)
-            args = json.loads(log.read_text())
-            self.assertNotIn('dangerous', args)
-            prompt = args[args.index('-p') + 1]
-            self.assertIn('Context: old Request: distractor', prompt)
-            self.assertTrue(prompt.endswith('THE CURRENT USER REQUEST (do this now):\nWrite a note titled Request: Vacation'))
-            self.assertEqual(Path(clover.request_file(Path(args[args.index('--config') + 1]).parent.parent)).read_text(), 'Write a note titled Request: Vacation')
-            self.assertEqual(args[args.index('--permission-mode') + 1], 'normal')
-            config = json.loads(Path(args[args.index('--config') + 1]).read_text())
-            self.assertIn('PreToolUse', config['hooks'])
-            self.assertIn('exec', config['permissions']['allow'])
-            self.assertIn('Fetch(*)', config['permissions']['allow'])
-            self.assertTrue(all(f'Exec({cmd})' in config['permissions']['deny'] for cmd in clover.DENIED))
-            self.assertIn('mcp__*', config['permissions']['deny'])
-            self.assertIn('CLOVER_CLIENT=devin', config['hooks']['PreToolUse'][0]['hooks'][0]['command'])
-            self.assertIn('|| exit 2', config['hooks']['PreToolUse'][0]['hooks'][0]['command'])
-            self.assertEqual(removed.read_text(), 'rm fixture-session --force')
 
-    def test_devin_hook_failure_exits_two(self):
-        with tempfile.TemporaryDirectory() as root:
-            command = json.loads(Path(clover.devin_config(root)).read_text())['hooks']['PreToolUse'][0]['hooks'][0]['command']
-            result = subprocess.run(command, shell=True, input='{', text=True, capture_output=True)
-        self.assertEqual(result.returncode, 2)
 
-    def test_failed_devin_output_is_not_success(self):
-        with tempfile.TemporaryDirectory() as root:
-            fake = Path(root, 'devin')
-            fake.write_text(f'''#!{sys.executable}
-import json, sys
-if sys.argv[1:3] == ['auth', 'status']: raise SystemExit(0)
-if sys.argv[1:3] == ['list', '--format']: print(json.dumps([])); raise SystemExit(0)
-print('Claimed success.')
-print('fixture failure', file=sys.stderr)
-raise SystemExit(4)
-''')
-            fake.chmod(0o755)
-            previous = signal.getsignal(signal.SIGTERM)
-            try:
-                with patch.dict(os.environ, {'PATH': root + os.pathsep + os.environ['PATH']}), \
-                     patch.object(clover, 'pref', side_effect=lambda k, d: 'devin' if k == 'client' else False if k == 'safe' else d):
-                    reply, _, _ = clover.run_devin('test')
-            finally:
-                signal.signal(signal.SIGTERM, previous)
-            self.assertIn('Devin stopped: fixture failure.', reply)
-            self.assertIn('choose Set Up', reply)
-            self.assertFalse(clover.run.ok)
 
-    def test_devin_cleanup_failure_keeps_the_answer_and_does_not_retry_the_task(self):
-        with tempfile.TemporaryDirectory() as root:
-            fake = Path(root, 'devin')
-            fake.write_text(f'''#!{sys.executable}
-import json, sys
-if sys.argv[1:3] == ['list', '--format']: print(json.dumps([])); raise SystemExit(0)
-print('Ready.')
-''')
-            fake.chmod(0o755)
-            previous = signal.getsignal(signal.SIGTERM)
-            try:
-                with patch.dict(os.environ, {'PATH': root + os.pathsep + os.environ['PATH']}), \
-                     patch.object(clover, 'pref', side_effect=lambda k, d: 'devin' if k == 'client' else False if k == 'safe' else d):
-                    reply, _, _ = clover.run_devin('test')
-            finally:
-                signal.signal(signal.SIGTERM, previous)
-            self.assertIn('Ready.', reply)
-            self.assertIn('could not delete Devin’s saved session', reply)
-            self.assertTrue(clover.run.ok)
 
-    def test_devin_timeout_is_not_relabelled_as_a_generic_crash(self):
-        process = unittest.mock.Mock(pid=123, returncode=-signal.SIGKILL, ask='')
-        process.communicate.side_effect = subprocess.TimeoutExpired(['devin'], 180)
-        process.stdout.close = unittest.mock.Mock()
-        with patch.object(clover.shutil, 'which', return_value='/fake/devin'), \
-             patch.object(clover.subprocess, 'Popen', return_value=process), \
-             patch.object(clover, 'stop_claude'), patch.object(clover, 'delete_devin_session', return_value=True), \
-             patch.object(clover, 'relay'), patch.object(clover.signal, 'signal'), patch.object(clover.atexit, 'register'):
-            reply, _, _ = clover.run_devin('test')
-        self.assertEqual(reply, 'Devin timed out before finishing. Please try again.')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    def test_antigravity_errors_do_not_expose_tracebacks(self):
+        fake = self.root / 'agy'
+        fake.write_text(f'#!{sys.executable}\nimport sys\nif "/hooks" in sys.argv: print("--agy-gate"); raise SystemExit(0)\n'
+                        'print("Traceback: fixture/internal.py line 12", file=sys.stderr)\nraise SystemExit(4)\n')
+        fake.chmod(0o755)
+        previous = signal.getsignal(signal.SIGTERM)
+        try:
+            with patch.dict(os.environ, {'PATH': str(self.root) + os.pathsep + os.environ['PATH']}), \
+                 patch.object(clover, 'pref', side_effect=lambda k, d: 'antigravity' if k == 'client' else d), \
+                 patch.object(clover, 'wait_commit', return_value=True), python_fixture_cli():
+                reply, _, _ = clover.run('test')
+        finally:
+            signal.signal(signal.SIGTERM, previous)
+        self.assertIn('Antigravity stopped', reply)
+        self.assertNotIn('fixture/internal.py', reply)
         self.assertFalse(clover.run.ok)
 
-    def test_external_client_errors_do_not_expose_tracebacks(self):
-        for client in ('pi', 'devin'):
-            with self.subTest(client=client):
-                fake = self.root / client
-                fake.write_text(f'#!{sys.executable}\nimport sys\nprint("Traceback: fixture/internal.py line 12", file=sys.stderr)\nraise SystemExit(4)\n')
+    def test_antigravity_runs_headless_with_clovers_hook_and_reads_the_answer(self):
+        log = self.root / 'agy.log'
+        fake = self.root / 'agy'
+        fake.write_text(f'''#!{sys.executable}
+import json, os, sys
+from pathlib import Path
+if sys.argv[1:3] == ['-p', '/hooks']:
+    print(Path('.agents/hooks.json').read_text()); raise SystemExit(0)
+Path(os.environ['AGY_LOG']).write_text(json.dumps({{'argv': sys.argv[1:], 'cwd': os.getcwd(), 'client': os.environ.get('CLOVER_CLIENT')}}))
+print(json.dumps({{'status': 'SUCCESS', 'result': 'Ready.', 'usage': {{'input_tokens': 3}}}}))
+''')
+        fake.chmod(0o755)
+        previous = signal.getsignal(signal.SIGTERM)
+        try:
+            with patch.dict(os.environ, {'PATH': str(self.root) + os.pathsep + os.environ['PATH'], 'AGY_LOG': str(log)}), \
+                 patch.object(clover, 'pref', side_effect=lambda k, d: 'antigravity' if k == 'client' else 'gemini-3.5-flash' if k == 'agyModel' else d), \
+                 patch.object(clover, 'wait_commit', return_value=True), python_fixture_cli():
+                reply, _, _ = clover.run_antigravity('Context: old', request='Write a note')
+        finally:
+            signal.signal(signal.SIGTERM, previous)
+        self.assertEqual(reply, 'Ready.')
+        self.assertTrue(clover.run.ok)
+        seen = json.loads(log.read_text())
+        args = seen['argv']
+        self.assertEqual(args[0], '-p')
+        self.assertTrue(args[1].endswith('THE CURRENT USER REQUEST (do this now):\nWrite a note'))
+        self.assertEqual(args[args.index('--output-format') + 1], 'json')
+        self.assertEqual(args[args.index('--model') + 1], 'gemini-3.5-flash')
+        self.assertIn('--dangerously-skip-permissions', args)   # only because Clover's hook was reported loaded
+        self.assertEqual(seen['client'], 'antigravity')
+
+    def test_antigravity_without_clovers_hook_never_skips_its_own_prompts(self):
+        log = self.root / 'agy.log'
+        fake = self.root / 'agy'
+        fake.write_text(f'''#!{sys.executable}
+import json, os, sys
+from pathlib import Path
+if sys.argv[1:3] == ['-p', '/hooks']: print('[]'); raise SystemExit(0)
+Path(os.environ['AGY_LOG']).write_text(json.dumps(sys.argv[1:]))
+print(json.dumps({{'response': 'Only answering.'}}))
+''')
+        fake.chmod(0o755)
+        previous = signal.getsignal(signal.SIGTERM)
+        try:
+            with patch.dict(os.environ, {'PATH': str(self.root) + os.pathsep + os.environ['PATH'], 'AGY_LOG': str(log)}), \
+                 patch.object(clover, 'pref', side_effect=lambda k, d: 'antigravity' if k == 'client' else d), \
+                 patch.object(clover, 'wait_commit', return_value=True), python_fixture_cli():
+                reply, _, _ = clover.run_antigravity('task')
+        finally:
+            signal.signal(signal.SIGTERM, previous)
+        self.assertEqual(reply, 'Only answering.')
+        self.assertNotIn('--dangerously-skip-permissions', json.loads(log.read_text()))
+
+    def test_antigravity_hook_maps_tools_onto_the_shared_gate(self):
+        ask = str(scratch_dir(self))
+        def hook(payload, safe=True):
+            out = io.StringIO()
+            with patch.dict(os.environ, {'CLOVER_CLIENT': 'antigravity', 'CLOVER_ASK': ask}), patch.object(clover, 'wait_commit', return_value=True), \
+                 patch.object(clover, 'pref', side_effect=lambda k, d: safe if k == 'safe' else d), patch.object(clover, 'preview_commands'), \
+                 patch.object(clover, 'ask_user', return_value='n'), patch('sys.stdin', io.StringIO(json.dumps(payload))), patch('sys.stdout', out):
+                clover.agy_gate()
+            return json.loads(out.getvalue().strip().splitlines()[-1])
+        run = lambda c: {'toolCall': {'name': 'run_command', 'args': {'CommandLine': c}}}
+        self.assertEqual(hook(run('echo hi')), {'allow_tool': True, 'deny_reason': ''})
+        self.assertFalse(hook(run('sudo ls'))['allow_tool'])
+        self.assertFalse(hook(run("r''m /tmp/file"), safe=False)['allow_tool'])   # hard denials hold even in Bypass
+        self.assertFalse(hook(run('open -a Mail; osascript -e "tell app \\"Mail\\" to send"'))['allow_tool'])   # the user said no to the card
+        self.assertTrue(hook({'toolCall': {'name': 'view_file', 'args': {'AbsolutePath': '/tmp/x.txt'}}})['allow_tool'])
+        self.assertTrue(hook({'toolCall': {'name': 'write_to_file', 'args': {'TargetFile': os.path.join(ask, 'note.md')}}})['allow_tool'])
+        self.assertFalse(hook({'toolCall': {'name': 'write_to_file', 'args': {'TargetFile': os.path.expanduser('~/.zshrc')}}})['allow_tool'])
+        self.assertFalse(hook({'toolCall': {'name': 'call_mcp_tool', 'args': {'ToolName': 'x'}}})['allow_tool'])
+        self.assertFalse(hook('not an event')['allow_tool'])   # fails closed
+
+    def test_antigravity_plan_reads_usage_without_spending_quota(self):
+        fake = self.root / 'agy'
+        for code, out, need in ((0, '{}', ''), (1, 'Authentication expired. Please log back in.', 'login')):
+            with self.subTest(code=code):
+                fake.write_text(f'#!{sys.executable}\nimport sys\nassert sys.argv[1:3] == ["-p", "/usage"]\nprint({out!r}, file=sys.stderr)\nraise SystemExit({code})\n')
                 fake.chmod(0o755)
-                previous = signal.getsignal(signal.SIGTERM)
-                try:
-                    with patch.dict(os.environ, {'PATH': str(self.root) + os.pathsep + os.environ['PATH']}), \
-                         patch.object(clover, 'pref', side_effect=lambda k, d: client if k == 'client' else d), \
-                         patch.object(clover, 'plan', return_value={'ok': True}), \
-                         patch.object(clover, 'delete_devin_session', return_value=True), \
-                         python_fixture_cli():
-                        reply, _, _ = clover.run('test')
-                finally:
-                    signal.signal(signal.SIGTERM, previous)
-                self.assertIn(f'{client.title()} stopped:', reply)
-                self.assertIn('choose Set Up', reply)
-                self.assertNotIn('fixture/internal.py', reply)
-                self.assertFalse(clover.run.ok)
+                with patch.dict(os.environ, {'PATH': str(self.root) + os.pathsep + os.environ['PATH']}), patch.object(clover, 'agy_path', return_value=str(fake)):
+                    result = clover.antigravity_plan()
+                self.assertEqual((result['ok'], result['need']), (not code, need))
+        with patch.object(clover, 'agy_path', return_value=''):
+            self.assertEqual(clover.antigravity_plan()['need'], 'install')
 
     def test_every_client_leaves_run_state_main_reads(self):
-        for name in ('pi', 'devin'):
+        for name in ('antigravity', 'direct'):
             clover.run.__dict__.clear()
             with patch.object(clover, 'client', return_value=name), patch.object(clover, 'run_' + name, return_value=('x', 0, 0)):
                 clover.run('task')
             self.assertEqual((clover.run.work, clover.run.observed, clover.run.handoffs), (False, [], []))
 
-    def test_pi_does_not_start_before_confirmation(self):
-        with tempfile.TemporaryDirectory() as root:
-            fake, marker = Path(root, 'pi'), Path(root, 'started')
-            fake.write_text(f'#!{sys.executable}\nfrom pathlib import Path\nPath({str(marker)!r}).touch()\n')
-            fake.chmod(0o755)
-            with patch.dict(os.environ, {'PATH': root + os.pathsep + os.environ['PATH']}), \
-                 patch.object(clover, 'wait_commit', return_value=False):
-                reply, _, _ = clover.run_pi('unconfirmed')
-            self.assertIn('cancelled', reply)
-            self.assertFalse(marker.exists())
-
-    def test_pi_auth_failure_reopens_setup(self):
-        fake = self.root / 'pi'
-        fake.write_text("import sys\nprint('No provider credentials; run /login', file=sys.stderr)\nraise SystemExit(1)\n")
-        fake.chmod(0o755)
-        with patch.dict(os.environ, {'PATH': str(self.root) + os.pathsep + os.environ['PATH']}), \
-             patch.object(clover, 'wait_commit', return_value=True), patch.object(clover, 'say') as say, \
-             patch.object(clover, 'relay'), patch.object(clover.signal, 'signal'), \
-             python_fixture_cli():
-            reply, _, _ = clover.run_pi('test')
-        say.assert_called_with('!', 'setup')
-        self.assertEqual(reply, 'Pi needs a provider and model. Open Clover Settings, choose Set Up, then try again.')
-        self.assertEqual(clover.run.why, 'provider_needed')
-
-    def test_pi_json_errors_are_failures_even_when_the_cli_exits_zero(self):
-        from types import SimpleNamespace
-        cases = [
-            ('error', '401 credentials expired', '', 'signed_out', True, 'choose Set Up'),
-            ('error', '429 usage limit reached', '', 'plan_limit', False, 'after the limit resets'),
-            ('error', '429 too many requests', '', 'rate_limited', False, 'try again in a moment'),
-            ('error', 'Prompt is too long', '', 'too_long', False, 'Close this box with ✕ to start fresh'),
-            ('error', 'Unknown provider model', '', 'provider_needed', True, 'Pi needs a provider and model'),
-            ('error', 'Service rejected request', '', 'stopped', True, 'choose Set Up'),
-            ('error', 'Service unavailable', '', 'unavailable', False, 'temporarily unavailable'),
-            ('error', 'Error: Unknown option: --no-mcp', '', 'outdated', False, 'Update Pi, then try again.'),
-            ('aborted', 'Request aborted', '', 'cancelled', False, 'cancelled'),
-            ('stop', '', 'Network connection failed', 'offline', False, 'Check your internet connection'),
-            ('stop', '', '', 'no_reply', False, 'empty answer'),
-        ]
-        for reason, detail, stderr, why, opens_setup, guidance in cases:
-            with self.subTest(reason=reason, detail=detail, stderr=stderr):
-                message = {'role': 'assistant', 'stopReason': reason, 'errorMessage': detail,
-                           'content': [{'type': 'text', 'text': 'Partial answer'}] if reason == 'error' else []}
-                def spawn(args, **kwargs):
-                    kwargs['stderr'].write(stderr)
-                    return SimpleNamespace(stdout=io.StringIO(json.dumps({'type': 'message_end', 'message': message}) + '\n'),
-                                           returncode=0, wait=lambda: 0, poll=lambda: 0)
-                clover.run.why = ''
-                with patch.object(clover.shutil, 'which', return_value='/fixture/pi'), \
-                     patch.object(clover, 'wait_commit', return_value=True), patch.object(clover, 'say') as say, \
-                     patch.object(clover, 'relay'), patch.object(clover.signal, 'signal'), \
-                     patch.object(clover.atexit, 'register'), patch.object(clover.subprocess, 'Popen', side_effect=spawn), \
-                     patch.object(clover, 'read_rows', return_value=[{'tool': 'exec', 'input': {'command': 'echo fixture'}}]):
-                    reply, _, _ = clover.run_pi('fixture request')
-                self.assertFalse(clover.run.ok)
-                self.assertEqual(clover.run.cmds, [])
-                self.assertEqual(clover.run.why, why)
-                self.assertIn(guidance, reply)
-                if opens_setup: say.assert_called_once_with('!', 'setup')
-                else: say.assert_not_called()
-                if (reason == 'error' or stderr) and why not in ('signed_out', 'provider_needed', 'too_long', 'outdated'):
-                    self.assertIn(detail or stderr, reply)
-                    self.assertNotIn('empty answer', reply)
-
-    def test_pi_ignores_malformed_events_and_uses_json_mode_images_and_clover_gate(self):
-        with tempfile.TemporaryDirectory() as root:
-            fake, log, frame = Path(root, 'pi'), Path(root, 'launch.json'), Path(root, 'frame.png')
-            frame.write_bytes(b'fixture')
-            fake.write_text(f'''#!{sys.executable}
-import json, os, sys
-from pathlib import Path
-Path(os.environ['PI_LOG']).write_text(json.dumps(sys.argv[1:]))
-print('null')
-print(json.dumps({{'type':'message_end','message':None}}))
-print(json.dumps({{'type':'message_end','message':{{'role':'assistant','content':None,'usage':None}}}}))
-print(json.dumps({{'type':'message_end','message':{{'role':'assistant','content':[{{'type':'text','text':'Ready.'}}],'usage':{{'cost':{{'total':0.012}}}}}}}}))
-''')
-            fake.chmod(0o755)
-            previous = signal.getsignal(signal.SIGTERM)
-            try:
-                with patch.dict(os.environ, {'PATH': root + os.pathsep + os.environ['PATH'], 'PI_LOG': str(log)}), \
-                     patch.object(clover, 'pref', side_effect=lambda k, d: 'pi' if k == 'client' else False if k == 'safe' else d), \
-                     patch.object(clover, 'wait_commit', return_value=True), python_fixture_cli():
-                    reply, usd, _ = clover.run_pi('Context: old Request: distractor', [(str(frame), 'screen')], request='Write a note titled Request: Vacation')
-            finally:
-                signal.signal(signal.SIGTERM, previous)
-            self.assertEqual((reply, usd), ('Ready.', .012))
-            args = json.loads(log.read_text())
-            self.assertEqual(args[-2], '@' + str(frame))
-            self.assertIn('Context: old Request: distractor', args[-1])
-            self.assertTrue(args[-1].endswith('THE CURRENT USER REQUEST (do this now):\nWrite a note titled Request: Vacation'))
-            self.assertEqual(Path(clover.request_file(Path(args[args.index('--extension') + 1]).parent)).read_text(), 'Write a note titled Request: Vacation')
-            self.assertEqual(args[args.index('--mode') + 1], 'json')
-            self.assertIn('--no-session', args)
-            self.assertEqual(args[args.index('--tools') + 1], 'bash,read,grep,find,ls')
-            extension = Path(args[args.index('--extension') + 1]).read_text()
-            self.assertIn('tool_call', extension)
-            self.assertIn('--gate', extension)
-
     def test_hook_and_helper_launch_runs_from_cached_bytecode_outside_the_app(self):
         home = Path(scratch_dir(self)); app = home / 'Clover.app'; app.mkdir()
         script = app / 'clover.py'; script.write_text(Path(clover.ME).read_text())
         (app / 'clover_engine.py').write_text((Path(clover.ME).parent / 'clover_engine.py').read_text())   # build.sh ships both
-        env = {k: v for k, v in os.environ.items() if not k.startswith('CLOVER_')} | {'HOME': str(home), 'CLOVER_DIR': str(home), 'CLOVER_CLIENT': 'pi'}
+        env = {k: v for k, v in os.environ.items() if not k.startswith('CLOVER_')} | {'HOME': str(home), 'CLOVER_DIR': str(home), 'CLOVER_CLIENT': 'antigravity'}
         event = json.dumps({'tool_name': 'exec', 'tool_input': {'command': 'env FIXTURE=1 rm /tmp/file'}})
         run = lambda *a, stdin='': subprocess.run([*a], input=stdin, env=env, capture_output=True, text=True, cwd=home, timeout=20)
         for args, stdin in ((['--gate'], event), (['--no-such-flag'], '')):
@@ -1078,18 +948,13 @@ print(json.dumps({{'type':'message_end','message':{{'role':'assistant','content'
             else: self.assertEqual(r.returncode, 2)
         self.assertTrue(list((home / 'Library/Caches/Clover').rglob('clover.*.pyc')))
         self.assertFalse((app / '__pycache__').exists())   # never written inside the signed app
-        hook = json.loads(Path(clover.devin_config(str(home))).read_text())['hooks']['PreToolUse'][0]['hooks'][0]['command']
-        self.assertTrue(hook.startswith(f'CLOVER_CLIENT=devin /bin/sh "{clover.ME}" --gate'))
-
-    def test_pi_gate_blocks_wrapped_denied_commands(self):
-        event = {'tool_name': 'exec', 'tool_input': {'command': 'env FIXTURE=1 rm /tmp/file'}}
-        with patch.dict(os.environ, {'CLOVER_CLIENT': 'pi'}), patch.object(clover, 'wait_commit', return_value=True), \
-             patch('sys.stdin', io.StringIO(json.dumps(event))), patch('sys.stdout', new_callable=io.StringIO) as out:
-            clover.gate()
-        self.assertEqual(json.loads(out.getvalue())['decision'], 'block')
+        command = clover.agy_workspace(str(home))
+        hooks = json.loads((home / '.agents/hooks.json').read_text())
+        self.assertEqual(hooks['clover-gate']['PreToolUse'][0]['hooks'][0]['command'], command)
+        self.assertTrue(command.startswith('/bin/sh ') and command.endswith(' --agy-gate'))
 
     def test_external_gates_normalize_shell_quoting_before_hard_denials(self):
-        for client in ('pi', 'devin'):
+        for client in ('antigravity', 'direct'):
             for command in ("r''m /tmp/file", r'r\m /tmp/file', "echo ready;r''m /tmp/file", "g''it p''ush", "rm /tmp/file\necho '"):
                 with self.subTest(client=client, command=command):
                     event = {'tool_name': 'exec', 'tool_input': {'command': command}}
@@ -1099,38 +964,25 @@ print(json.dumps({{'type':'message_end','message':{{'role':'assistant','content'
                         clover.gate()
                     self.assertEqual(json.loads(out.getvalue())['decision'], 'block')
 
-    def test_pi_safe_mode_asks_before_shell_commands(self):
-        event = {'tool_name': 'exec', 'tool_input': {'command': 'echo hello'}}
-        with tempfile.TemporaryDirectory() as root, patch.dict(os.environ, {'CLOVER_CLIENT': 'pi', 'CLOVER_ASK': root}), \
-             patch.object(clover, 'wait_commit', return_value=True), patch.object(clover, 'pref', return_value=True), \
-             patch.object(clover, 'ask_user', return_value='n') as ask, \
-             patch('sys.stdin', io.StringIO(json.dumps(event))), patch('sys.stdout', new_callable=io.StringIO) as out:
-            clover.gate()
-            self.assertFalse(Path(root, 'pi-tools.jsonl').exists())
-        ask.assert_called_once()
-        self.assertEqual(json.loads(out.getvalue())['decision'], 'block')
-
-    def test_devin_fetch_tool_reaches_the_shared_gate(self):
-        event = {'tool_name': 'Fetch', 'tool_input': {'url': 'https://fixture.invalid'}}
-        with tempfile.TemporaryDirectory() as root, patch.dict(os.environ, {'CLOVER_CLIENT': 'devin', 'CLOVER_ASK': root}), \
-             patch.object(clover, 'wait_commit', return_value=True), patch.object(clover, 'pref', return_value=False), \
-             patch('sys.stdin', io.StringIO(json.dumps(event))), patch('sys.stdout', new_callable=io.StringIO) as out:
-            clover.gate()
-            row = json.loads(Path(root, 'devin-tools.jsonl').read_text())
-        self.assertEqual(json.loads(out.getvalue())['decision'], 'approve')
-        self.assertEqual(row['tool'], 'webfetch')
-
-    def test_pi_plan_only_requires_the_cli(self):
-        with patch.object(clover.shutil, 'which', side_effect=[None, '/fake/pi']):
-            self.assertEqual(clover.pi_plan()['need'], 'install')
-            self.assertTrue(clover.pi_plan()['ok'])
-
-    def test_devin_auth_uses_status_exit_code(self):
-        ok = subprocess.CompletedProcess([], 0, stdout='localized output')
-        bad = subprocess.CompletedProcess([], 1, stdout='Logged in')
-        with patch.object(clover.shutil, 'which', return_value='/fake/devin'), patch.object(clover.subprocess, 'run', side_effect=[ok, bad]):
-            self.assertTrue(clover.devin_plan()['ok'])
-            self.assertFalse(clover.devin_plan()['ok'])
+    def test_permission_modes(self):
+        def ask_for(cmd, mode):
+            asked = []
+            with patch.dict(os.environ, {'CLOVER_CLIENT': 'direct', 'CLOVER_ASK': str(scratch_dir(self))}), patch.object(clover, 'wait_commit', return_value=True), \
+                 patch.object(clover, 'pref', side_effect=lambda k, d: mode if k == 'permissionMode' else (mode != 'bypass') if k == 'safe' else d), \
+                 patch.object(clover, 'preview_commands'), patch.object(clover, 'ask_user', side_effect=lambda j, s: asked.append(j['q']) or 'y'), \
+                 patch('sys.stdin', io.StringIO(json.dumps({'tool_name': 'exec', 'tool_input': {'command': cmd}}))), patch('sys.stdout', new_callable=io.StringIO):
+                clover.gate()
+            return asked
+        send = 'osascript -e "tell application \\"Mail\\" to send (first outgoing message)"'
+        self.assertEqual(ask_for(send, 'ask'), ['Send this?'])
+        self.assertEqual(ask_for(send, 'auto'), [])   # Auto acts on its own…
+        self.assertEqual(ask_for('osascript -e "tell application \\"Finder\\" to delete file \\"a\\""', 'auto'), ['Delete something?'])   # …but asks before deleting
+        self.assertEqual(ask_for(send, 'bypass'), [])
+        with patch.object(clover, 'pref', side_effect=lambda k, d: d if k == 'permissionMode' else False if k == 'safe' else d):
+            self.assertEqual(clover.permission_mode(), 'bypass')   # older settings: Safe mode off
+        with patch.object(clover, 'pref', side_effect=lambda k, d: 'auto' if k == 'permissionMode' else d):
+            self.assertTrue(clover.auto_allows('Send'))
+            self.assertFalse(clover.auto_allows('Place order'))
 
     def test_custom_server_plan_needs_claude_code_not_an_account(self):
         prefs = {'apiBase': 'http://localhost:11434', 'apiModel': 'qwen3'}
@@ -1481,7 +1333,7 @@ print(json.dumps({{'type':'message_end','message':{{'role':'assistant','content'
         ask = self.root / 'ask'; ask.mkdir()
         (ask / 'hands-1').write_text('▸ Opening Notes\n⚙ apiBase http://attacker.example\n? Allow?\tok\t/tmp/x\n✓ Done.')
         card = Path(clover.question_path(ask)); card.parent.mkdir(parents=True, exist_ok=True)
-        for forged in ({'set': 'apiBase', 'value': 'http://attacker.example'}, {'set': 'safe', 'value': False}, {'set': 'client', 'value': 'pi'}, {'set': 'speak', 'value': False}):
+        for forged in ({'set': 'apiBase', 'value': 'http://attacker.example'}, {'set': 'safe', 'value': False}, {'set': 'client', 'value': 'antigravity'}, {'set': 'speak', 'value': False}):
             card.write_text(json.dumps(forged))
             process = unittest.mock.Mock(); process.ask = str(ask); process.poll.side_effect = [None, 0]
             with patch.dict(os.environ, {'CLOVER_UI': '1'}), patch.object(clover.time, 'sleep'), patch('sys.stdout', new_callable=io.StringIO) as out:
@@ -1688,67 +1540,7 @@ print(json.dumps({{'type':'message_end','message':{{'role':'assistant','content'
                 clover.stop_claude(p)
                 p.wait(timeout=3)
 
-    def test_devin_sigterm_stops_its_descendant(self):
-        with tempfile.TemporaryDirectory() as root:
-            root = Path(root)
-            ready, survived = root / 'ready', root / 'survived'
-            child = f'import time; from pathlib import Path; Path({str(ready)!r}).touch(); time.sleep(.6); Path({str(survived)!r}).touch()'
-            fake = root / 'devin'
-            fake.write_text(f'''#!{sys.executable}
-import json, subprocess, sys, time
-if sys.argv[1:3] == ['auth', 'status']: raise SystemExit(0)
-if sys.argv[1:3] == ['list', '--format']: print(json.dumps([])); raise SystemExit(0)
-subprocess.Popen([sys.executable, '-c', {child!r}])
-time.sleep(30)
-''')
-            fake.chmod(0o755)
-            runner = root / 'run.py'
-            runner.write_text("import clover\nclover.pref=lambda k,d: 'devin' if k=='client' else False if k=='safe' else d\nclover.run_devin('test')\n")
-            p = subprocess.Popen([sys.executable, str(runner)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                                 env={**os.environ, 'PATH': str(root) + os.pathsep + os.environ['PATH'],
-                                      'CLOVER_DIR': str(root), 'PYTHONPATH': str(Path(clover.ME).parent)})
-            try:
-                deadline = time.monotonic() + 15
-                while not ready.exists() and time.monotonic() < deadline:
-                    time.sleep(.01)
-                self.assertTrue(ready.exists(), 'fake Devin never started')
-                p.send_signal(signal.SIGTERM)
-                p.wait(timeout=3)
-                time.sleep(.7)
-                self.assertFalse(survived.exists(), 'Devin child survived Stop')
-            finally:
-                if p.poll() is None:
-                    p.kill(); p.wait(timeout=3)
 
-    def test_pi_sigterm_stops_its_descendant(self):
-        with tempfile.TemporaryDirectory() as root:
-            root = Path(root)
-            ready, survived = root / 'ready', root / 'survived'
-            child = f'import time; from pathlib import Path; Path({str(ready)!r}).touch(); time.sleep(.6); Path({str(survived)!r}).touch()'
-            fake = root / 'pi'
-            fake.write_text(f'''#!{sys.executable}
-import subprocess, sys, time
-subprocess.Popen([sys.executable, '-c', {child!r}])
-time.sleep(30)
-''')
-            fake.chmod(0o755)
-            runner = root / 'run.py'
-            runner.write_text("import clover\nclover.pref=lambda k,d: 'pi' if k=='client' else False if k=='safe' else d\nclover.run_pi('test')\n")
-            p = subprocess.Popen([sys.executable, str(runner)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                                 env={**os.environ, 'PATH': str(root) + os.pathsep + os.environ['PATH'],
-                                      'CLOVER_DIR': str(root), 'PYTHONPATH': str(Path(clover.ME).parent)})
-            try:
-                deadline = time.monotonic() + 15
-                while not ready.exists() and time.monotonic() < deadline:
-                    time.sleep(.01)
-                self.assertTrue(ready.exists(), 'fake Pi never started')
-                p.send_signal(signal.SIGTERM)
-                p.wait(timeout=3)
-                time.sleep(.7)
-                self.assertFalse(survived.exists(), 'Pi child survived Stop')
-            finally:
-                if p.poll() is None:
-                    p.kill(); p.wait(timeout=3)
 
     def test_fast_worker_sigterm_stops_its_action_group(self):
         with tempfile.TemporaryDirectory() as root:
@@ -1946,7 +1738,7 @@ class WatchAndBudgetTests(unittest.TestCase):
             self.assertEqual(ask.call_args.args[0] if ask.called else None, key and {'set': key, 'value': False})
         with patch.dict(os.environ, {'CLOVER_ASK': '/fake'}), patch.object(clover, 'ask_user') as ask, patch.object(clover.subprocess, 'run'), \
              patch('sys.stdout', new_callable=io.StringIO) as out:
-            clover.set_switch('AI client', 'devin')
+            clover.set_switch('AI client', 'antigravity')
         ask.assert_not_called()
         self.assertIn('Only you', out.getvalue())
 

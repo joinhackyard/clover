@@ -4,7 +4,8 @@ Providers (Settings → Intelligence → API key):
   anthropic  Claude API (api.anthropic.com), Messages API with prompt caching
   openai     OpenAI, or any OpenAI-style base URL you set
   azure      Azure OpenAI / Azure AI Foundry (classic deployments URL, or the v1 API)
-  custom     any endpoint: OpenAI-compatible chat completions (Ollama, LM Studio, vLLM, OpenRouter, Groq…) or Anthropic Messages
+  gemini, openrouter, groq, mistral, deepseek, xai, ollama   well-known OpenAI-compatible services, preset (PRESETS)
+  custom     any endpoint: OpenAI-compatible chat completions (LM Studio, vLLM, Together…) or Anthropic Messages
 
 Stdlib only. Messages use one neutral shape and are translated per provider:
   {'role': 'user', 'content': [{'type': 'text', 'text': …} | {'type': 'image', 'data': <base64 jpeg/png>, 'media': 'image/jpeg'}]}
@@ -20,8 +21,18 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-PROVIDERS = ('anthropic', 'openai', 'azure', 'custom')
-LABELS = {'anthropic': 'Claude API', 'openai': 'OpenAI', 'azure': 'Azure OpenAI', 'custom': 'Custom endpoint'}
+# Well-known services that speak OpenAI-style chat completions: name, base URL, fast model, work model, needs a key.
+PRESETS = {
+    'gemini': ('Google Gemini', 'https://generativelanguage.googleapis.com/v1beta/openai', 'gemini-3.5-flash', 'gemini-3.1-pro', True),
+    'openrouter': ('OpenRouter', 'https://openrouter.ai/api/v1', 'openrouter/auto', 'openrouter/auto', True),
+    'groq': ('Groq', 'https://api.groq.com/openai/v1', 'llama-3.3-70b-versatile', 'llama-3.3-70b-versatile', True),
+    'mistral': ('Mistral', 'https://api.mistral.ai/v1', 'mistral-small-latest', 'mistral-large-latest', True),
+    'deepseek': ('DeepSeek', 'https://api.deepseek.com/v1', 'deepseek-chat', 'deepseek-reasoner', True),
+    'xai': ('xAI Grok', 'https://api.x.ai/v1', 'grok-4-fast', 'grok-4', True),
+    'ollama': ('Ollama', 'http://localhost:11434/v1', '', '', False),
+}
+PROVIDERS = ('anthropic', 'openai', 'azure', *PRESETS, 'custom')
+LABELS = {'anthropic': 'Claude API', 'openai': 'OpenAI', 'azure': 'Azure OpenAI', **{k: v[0] for k, v in PRESETS.items()}, 'custom': 'Custom endpoint'}
 DEFAULTS = {
     'anthropicModel': 'claude-haiku-5-5', 'anthropicWorkModel': 'claude-sonnet-5-5',
     'openaiBase': 'https://api.openai.com/v1', 'openaiModel': 'gpt-5-mini', 'openaiWorkModel': 'gpt-5',
@@ -60,6 +71,11 @@ def config(pref):
         fast = _s(pref, 'azureDeployment')
         return {'provider': provider, 'format': 'openai', 'base': _s(pref, 'azureEndpoint').rstrip('/'), 'key': _s(pref, 'azureKey'),
                 'version': _s(pref, 'azureApiVersion') or DEFAULTS['azureApiVersion'], 'fast': fast, 'work': _s(pref, 'azureWorkDeployment') or fast}
+    if provider in PRESETS:
+        _, base, fast, work, _ = PRESETS[provider]
+        fast = _s(pref, provider + 'Model') or fast
+        return {'provider': provider, 'format': 'openai', 'base': (_s(pref, provider + 'Base') or base).rstrip('/'),
+                'key': _s(pref, provider + 'Key'), 'fast': fast, 'work': _s(pref, provider + 'WorkModel') or work or fast}
     fmt = _s(pref, 'customFormat')
     fast = _s(pref, 'customModel')
     return {'provider': provider, 'format': fmt if fmt in ('openai', 'anthropic') else 'openai', 'base': _s(pref, 'customBase').rstrip('/'),
@@ -69,9 +85,9 @@ def config(pref):
 def problem(cfg):
     """'' when the settings can work, else one line saying what to fill in."""
     name = LABELS[cfg['provider']]
-    if cfg['provider'] in ('anthropic', 'openai') and not cfg['key']:
+    if (cfg['provider'] in ('anthropic', 'openai') or PRESETS.get(cfg['provider'], (0,) * 5)[4]) and not cfg['key']:
         return f'Add your {name} key in Clover Settings → Intelligence.'
-    if cfg['provider'] in ('azure', 'custom'):
+    if cfg['provider'] in ('azure', 'custom', 'ollama'):
         try: u = urllib.parse.urlparse(cfg['base'])
         except ValueError: u = None
         if not u or u.scheme not in ('http', 'https') or not u.hostname:
@@ -84,7 +100,7 @@ def problem(cfg):
 
 
 def describe(cfg):
-    if cfg['provider'] in ('azure', 'custom'):
+    if cfg['provider'] in ('azure', 'custom', 'ollama'):
         host = urllib.parse.urlparse(cfg['base']).hostname or cfg['base']
         return f'{LABELS[cfg["provider"]]} · {cfg["fast"]} at {host}'
     return f'{LABELS[cfg["provider"]]} · {cfg["fast"]}'

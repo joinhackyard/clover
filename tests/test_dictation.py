@@ -32,7 +32,7 @@ class DictationCleanupTests(unittest.TestCase):
             self.assertIn('Spell my name Saarth.', args[1])
             self.assertLessEqual(len(args[1]), 7100)
         paragraph = 'a ' * 3000 + '\n\n' + 'b ' * 3000
-        with patch.object(clover, 'client', return_value='pi'):
+        with patch.object(clover, 'client', return_value='antigravity'):
             self.assertEqual(clover.dictate_cleanup(paragraph), paragraph.replace(' \n\n', '\n\n').strip())
         with patch.object(clover, 'meeting_call') as empty:
             self.assertEqual(clover.dictate_cleanup('   '), '')
@@ -92,10 +92,10 @@ class DictationCleanupTests(unittest.TestCase):
 
     def test_non_claude_cleanup_falls_back_without_starting_claude(self):
         import clover
-        with patch.object(clover, 'client', return_value='pi'), patch.object(clover, 'meeting_call') as call:
+        with patch.object(clover, 'client', return_value='antigravity'), patch.object(clover, 'meeting_call') as call:
             self.assertEqual(clover.dictate_cleanup('Um, keep every word.'), 'keep every word.')
         call.assert_not_called()
-        with patch.object(clover, 'client', return_value='pi'), patch.object(clover, 'meeting_process') as process, \
+        with patch.object(clover, 'client', return_value='antigravity'), patch.object(clover, 'meeting_process') as process, \
              patch('sys.stdin', io.StringIO('Um, keep every word.')), patch('sys.stdout', new_callable=io.StringIO) as out:
             clover.dictate_cleanup_wait()
         process.assert_not_called()

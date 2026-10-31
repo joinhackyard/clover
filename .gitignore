@@ -38,3 +38,6 @@ docs/film-poster.png
 /test-artifacts/
 # Devbox generated artifacts
 .devbox/
+
+# Local design skills (npx skills add …)
+skills-lock.json

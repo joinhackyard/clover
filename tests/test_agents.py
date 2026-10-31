@@ -394,7 +394,7 @@ class AgentTests(unittest.TestCase):
                 self.assertNotIn(clover.MODEL_OFFER.strip(),json.dumps(clover.run.handoff))
                 for k in prefs:self.prefs.pop(k)
                 clover.MainMove.carried.clear()
-        for name in ('devin','pi'):
+        for name in ('antigravity','direct'):
             self.prefs['client']=name
             with patch.object(clover,'run_'+name,side_effect=lambda *a,**kw:print('fixture reply') or ('done',0,[])),patch.dict(os.environ,{'CLOVER_UI':'1'}), \
                  contextlib.redirect_stdout(io.StringIO()) as output:

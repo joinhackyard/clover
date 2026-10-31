@@ -137,7 +137,7 @@ class TelemetryTests(unittest.TestCase):
                 self.assertEqual(clover.failure_why(detail, custom), why)
                 clover.report_worker_failure('claude', 'private-model-name', why)
             for why in ('setup_needed', 'provider_needed', 'model_missing'):
-                clover.report_worker_failure('pi', 'haiku', why)
+                clover.report_worker_failure('antigravity', 'haiku', why)
         self.assertTrue(all(call.args == ('setup',) for call in sent.call_args_list))
         self.assertNotIn('private', str(sent.call_args_list))
         with patch.object(clover, 'report_error') as sent:

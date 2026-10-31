@@ -78,6 +78,23 @@ class EngineTests(unittest.TestCase):
         self.assertEqual((custom['base'], custom['format'], engine.problem(custom)), ('http://localhost:11434/v1', 'openai', ''))
         self.assertEqual(engine.config(self.prefs(provider='nope'))['provider'], 'anthropic')
 
+    def test_well_known_presets(self):
+        gem = engine.config(self.prefs(provider='gemini', geminiKey='g'))
+        self.assertEqual((gem['base'], gem['fast'], gem['work'], engine.problem(gem)),
+                         ('https://generativelanguage.googleapis.com/v1beta/openai', 'gemini-3.5-flash', 'gemini-3.1-pro', ''))
+        self.assertEqual(engine.endpoint(gem, 'gemini-3.5-flash'), ('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+                                                                     {'content-type': 'application/json', 'authorization': 'Bearer g'}))
+        self.assertIn('Groq key', engine.problem(engine.config(self.prefs(provider='groq'))))
+        for name in ('openrouter', 'groq', 'mistral', 'deepseek', 'xai'):
+            cfg = engine.config(self.prefs(provider=name, **{name + 'Key': 'k', name + 'Model': 'mine'}))
+            self.assertEqual((cfg['format'], cfg['fast'], engine.problem(cfg)), ('openai', 'mine', ''))
+            self.assertTrue(cfg['base'].startswith('https://'))
+        ollama = engine.config(self.prefs(provider='ollama', ollamaModel='llama3.2'))
+        self.assertEqual((ollama['base'], ollama['key'], engine.problem(ollama)), ('http://localhost:11434/v1', '', ''))   # local: no key
+        self.assertIn('model', engine.problem(engine.config(self.prefs(provider='ollama'))))
+        self.assertEqual(engine.describe(ollama), 'Ollama · llama3.2 at localhost')
+        self.assertEqual(set(engine.PROVIDERS), {'anthropic', 'openai', 'azure', 'gemini', 'openrouter', 'groq', 'mistral', 'deepseek', 'xai', 'ollama', 'custom'})
+
     def test_endpoints(self):
         az = engine.config(self.prefs(provider='azure', azureEndpoint='https://r.openai.azure.com/', azureKey='k', azureDeployment='mini'))
         url, headers = engine.endpoint(az, 'mini')

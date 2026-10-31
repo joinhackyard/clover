@@ -15,6 +15,7 @@ import UniformTypeIdentifiers
 import EventKit
 import CoreAudio
 import AudioToolbox
+import UserNotifications
 import NaturalLanguage
 
 let dir = ProcessInfo.processInfo.environment["CLOVER_RESOURCES_DIR"] ?? Bundle.main.resourcePath!   // build.sh copies clover.py and ui/ in here
@@ -2519,6 +2520,9 @@ final class App: NSObject, WKScriptMessageHandler {
             self?.allowUntil = Date().addingTimeInterval(3)   // hands raise an app for a mouse click, then put the user's app back
             self?.allowUserApp = n.object as? String == "user"   // a voice focus request changes the user's app; a temporary hands raise does not
         }
+        DistributedNotificationCenter.default().addObserver(forName: .init("clover.notify"), object: nil, queue: .main) { n in
+            if let text = n.object as? String { cloverNotify(text) }   // clover.py's notifications, posted as Clover rather than Script Editor
+        }
         SFSpeechRecognizer.requestAuthorization { _ in }
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
             guard let self else { return }
@@ -2605,7 +2609,7 @@ final class App: NSObject, WKScriptMessageHandler {
                 let last = answer.hasPrefix("✓ ") ? String(answer.dropFirst(2)) : answer
                 if voice?.isRunning == true { shush() } else if !last.isEmpty { deliver(last, force: true) }
             }
-            if b["safe"] != nil { Prefs.set("safe", true); js("mode", true); Clover.settings.push() }
+            if b["safe"] != nil { Prefs.set("safe", true); Prefs.set("permissionMode", "ask"); js("mode", true); Clover.settings.push() }
             if let m = b["model"] as? String {   // picked in the box: the same setting Settings shows; a worker warmed on the old model goes
                 Clover.settings.apply(Prefs.str("apiBase").isEmpty ? "routing" : "apiModel", m); Clover.settings.push()
             }
@@ -4251,7 +4255,7 @@ final class AgentPanels: NSObject, WKScriptMessageHandler {
             let screen = mouseScreen
             let f = MeetingFrame.clamp(NSRect(x:screen.visibleFrame.midX-380,y:screen.visibleFrame.midY-290,width:760,height:580),screen.visibleFrame)
             let panel = KeyPanel(contentRect:f,styleMask:[.titled,.closable,.resizable,.nonactivatingPanel,.fullSizeContentView],backing:.buffered,defer:false)
-            panel.title = "Agents"; panel.titleVisibility = .hidden; panel.titlebarAppearsTransparent = true
+            panel.title = "Clover Agents"; panel.titleVisibility = .hidden; panel.titlebarAppearsTransparent = true
             panel.minSize = NSSize(width:520,height:340); panel.isReleasedWhenClosed = false
             view = panel; viewWeb = makeWeb(panel,surface:"view")
             if let bg = panel.contentView { viewWeb?.frame = NSRect(x:0,y:0,width:bg.bounds.width,height:bg.bounds.height-28) }   // the glass strip above keeps the traffic lights and window drag native
@@ -4507,7 +4511,7 @@ final class Onboarding: NSObject, WKScriptMessageHandler, NSWindowDelegate {
                 self?.call("ob.prefs", ["meeting": Prefs.bool("meeting"), "draw": Prefs.bool("draw"), "routing": Prefs.str("routing"), "hotkeyLabel": Prefs.str("hotkeyLabel"), "safe": Prefs.bool("safe"),
                                         "dictateMode": Prefs.str("dictateMode"), "dictateHotkeyLabel": Prefs.str("dictateHotkeyLabel"), "globeTaken": globeKeyTaken()])
                 var server: [String: Any] = ["apiBase": Prefs.str("apiBase"), "apiModel": Prefs.str("apiModel"), "provider": Prefs.str("provider"),   // keys stay native: the sheet only learns which are set
-                    "keys": Dictionary(uniqueKeysWithValues: ["anthropic", "openai", "azure", "custom"].map { ($0, !Prefs.str($0 + "Key").isEmpty) })]
+                    "keys": Dictionary(uniqueKeysWithValues: SettingsWindow.providers.map { ($0, !Prefs.str($0 + "Key").isEmpty) })]
                 for k in SettingsWindow.providerKeys where !k.hasSuffix("Key") { server[k] = Prefs.str(k) }
                 self?.call("ob.server", server)
             }
@@ -4544,17 +4548,17 @@ final class Onboarding: NSObject, WKScriptMessageHandler, NSWindowDelegate {
     func fixPlan() {
         Onboarding.plan { [weak self] c in
             let need = c["need"] as? String ?? ""
-            let devin = (c["client"] as? String) == "devin", pi = (c["client"] as? String) == "pi", server = (c["client"] as? String) == "server"
+            let agy = (c["client"] as? String) == "antigravity", server = (c["client"] as? String) == "server"
             if need.isEmpty, c["ok"] as? Bool == false { Clover.settings.open(); return }
             if (c["client"] as? String) == "direct" { Clover.settings.open(tab: "brain"); return }   // an API key is typed in Settings, not a Terminal
             if need == "upgrade" { NSWorkspace.shared.open(URL(string: "https://claude.ai/upgrade")!); return }
+            let agySignIn = "echo 'Sign in with Google in the browser window, then type /exit to come back to Clover.' && agy"   // the same sign-in the Antigravity app uses
             let cmd = need == "install"
-                ? devin ? "curl -fsSL https://cli.devin.ai/install.sh | bash && devin auth login"
-                        : pi ? "curl -fsSL https://pi.dev/install.sh | sh && echo 'In Pi, use /login or /model to choose your provider.' && pi"
-                             : "curl -fsSL https://claude.ai/install.sh | bash" + (server ? "" : " && ~/.local/bin/claude auth login")   // a custom server needs Claude Code, not a Claude account
-                : devin ? "devin auth login" : pi ? "echo 'In Pi, use /login or /model to choose your provider.' && pi" : "claude auth login"
-            let title = devin ? "Devin" : pi ? "Pi" : "Claude Code"
-            let f = NSTemporaryDirectory() + "clover-\(devin ? "devin" : pi ? "pi" : "claude").command"
+                ? agy ? "curl -fsSL https://antigravity.google/cli/install.sh | bash && " + agySignIn
+                      : "curl -fsSL https://claude.ai/install.sh | bash" + (server ? "" : " && ~/.local/bin/claude auth login")   // a custom server needs Claude Code, not a Claude account
+                : agy ? agySignIn : "claude auth login"
+            let title = agy ? "Antigravity" : "Claude Code"
+            let f = NSTemporaryDirectory() + "clover-\(agy ? "antigravity" : "claude").command"
             try? "#!/bin/zsh\nexport PATH=\"$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH\"\necho 'Clover: setting up \(title)'\n\(cmd)\necho; echo 'Done. You can close this window.'\n".write(toFile: f, atomically: true, encoding: .utf8)
             chmod(f, 0o755)
             NSWorkspace.shared.open(URL(fileURLWithPath: f))
@@ -4676,9 +4680,9 @@ final class Onboarding: NSObject, WKScriptMessageHandler, NSWindowDelegate {
         if b["do"] == "cheer" { openCheer("setup"); return }
         if b["do"] == "feedback" { Clover.settings.open(tab: "feedback"); return }
         if b["do"] == "enableAll" { return enableAll(connected: b["connected"] == "true") }
-        if b["do"] == "provider", let c = b["client"], ["claude", "direct", "devin", "pi"].contains(c) {   // the plan row's Change provider sheet
+        if b["do"] == "provider", let c = b["client"], ["claude", "antigravity", "direct"].contains(c) {   // the plan row's Change provider sheet
             for k in ["apiBase", "apiKey", "apiModel"] + SettingsWindow.providerKeys { if let v = b[k] { Clover.settings.apply(k, v) } }   // keys first: the client switch rechecks the plan with them
-            if let p = b["provider"], ["anthropic", "openai", "azure", "custom"].contains(p) { Clover.settings.apply("provider", p) }
+            if let p = b["provider"], SettingsWindow.providers.contains(p) { Clover.settings.apply("provider", p) }
             Clover.settings.apply("client", c)
             Clover.settings.push(); return checkPlan()
         }
@@ -5049,14 +5053,58 @@ final class Delegate: NSObject, NSApplicationDelegate {
 }
 
 // The menu bar icon: quick actions, today's usage.
+// The menu bar mark: a four-leaf clover drawn as a template image, so macOS tints it for light, dark and tinted menu bars.
+// outline: idle; filled: Clover is listening or working.
+func cloverMark(size: CGFloat = 18, filled: Bool = false) -> NSImage {
+    let image = NSImage(size: NSSize(width: size, height: size), flipped: false) { rect in
+        let c = NSPoint(x: rect.midX, y: rect.midY + size * 0.04), r = size * 0.205
+        let leaves = NSBezierPath()
+        for i in 0..<4 {   // each leaf is a heart: two lobes and a point that meets the centre
+            let a = CGFloat.pi / 4 + CGFloat(i) * .pi / 2, out = CGVector(dx: cos(a), dy: sin(a)), side = CGVector(dx: -sin(a), dy: cos(a))
+            let tip = NSPoint(x: c.x + out.dx * r * 0.18, y: c.y + out.dy * r * 0.18)
+            let leaf = NSBezierPath()
+            leaf.move(to: tip)
+            for s in [-1.0, 1.0] as [CGFloat] {
+                let lobe = NSPoint(x: c.x + out.dx * r * 1.25 + side.dx * s * r * 0.5, y: c.y + out.dy * r * 1.25 + side.dy * s * r * 0.5)
+                leaf.appendOval(in: NSRect(x: lobe.x - r * 0.55, y: lobe.y - r * 0.55, width: r * 1.1, height: r * 1.1))
+            }
+            let left = NSPoint(x: c.x + out.dx * r * 1.1 - side.dx * r * 0.98, y: c.y + out.dy * r * 1.1 - side.dy * r * 0.98)
+            let right = NSPoint(x: c.x + out.dx * r * 1.1 + side.dx * r * 0.98, y: c.y + out.dy * r * 1.1 + side.dy * r * 0.98)
+            leaf.move(to: tip); leaf.line(to: left); leaf.line(to: NSPoint(x: c.x + out.dx * r * 1.4, y: c.y + out.dy * r * 1.4)); leaf.line(to: right); leaf.close()
+            leaves.append(leaf)
+        }
+        let stem = NSBezierPath(); stem.lineWidth = size * 0.075; stem.lineCapStyle = .round
+        stem.move(to: NSPoint(x: c.x, y: c.y - r * 0.2)); stem.curve(to: NSPoint(x: c.x + r * 0.95, y: rect.minY + size * 0.06),
+            controlPoint1: NSPoint(x: c.x + r * 0.1, y: c.y - r * 1.4), controlPoint2: NSPoint(x: c.x + r * 0.5, y: rect.minY + size * 0.12))
+        NSColor.black.set()
+        leaves.windingRule = .nonZero; leaves.fill(); stem.stroke()
+        if !filled {   // idle: a small hollow heart in the middle, so the busy mark reads fuller
+            NSGraphicsContext.current?.compositingOperation = .destinationOut
+            NSBezierPath(ovalIn: NSRect(x: c.x - r * 0.3, y: c.y - r * 0.3, width: r * 0.6, height: r * 0.6)).fill()
+            NSGraphicsContext.current?.compositingOperation = .sourceOver
+        }
+        return true
+    }
+    image.isTemplate = true
+    image.accessibilityDescription = "Clover"
+    return image
+}
+
 final class MenuBar: NSObject, NSMenuDelegate {
     let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     override init() {
         super.init()
-        item.button?.image = NSImage(systemSymbolName: "waveform", accessibilityDescription: "Clover")
+        item.button?.image = cloverMark()
         let m = NSMenu(); m.delegate = self; item.menu = m
         item.isVisible = Prefs.bool("menuIcon")
         paint()
+        Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { [weak self] _ in self?.showWork() }
+    }
+    var working = false
+    func showWork() {   // the clover fills in while Clover listens or works, then goes back to its outline
+        let now = app.busy || app.engine.isRunning
+        guard now != working else { return }
+        working = now; item.button?.image = cloverMark(filled: now)
     }
     func paint() { item.button?.appearsDisabled = Prefs.bool("paused"); item.button?.title = meeting.running ? " ·" : ""; item.length = meeting.running ? 38 : NSStatusItem.squareLength }
     func menuNeedsUpdate(_ m: NSMenu) {
@@ -5464,6 +5512,9 @@ final class SettingsWindow: NSObject, WKScriptMessageHandler, WKNavigationDelega
             calendar.requestFullAccessToEvents { ok, _ in if !ok { DispatchQueue.main.async { Prefs.set("meetingNudge", false); settings.push() } } }
         }
         if k == "gestures" { app.js("gestures", v as? Bool == true) }
+        if k == "permissionMode", let mode = v as? String {   // Safety: ask / auto / bypass; the older safe switch follows it
+            Prefs.set("safe", mode != "bypass"); app.js("mode", mode != "bypass"); push()
+        }
         if ["routing", "model", "client", "apiBase", "apiKey", "apiModel", "provider"].contains(k) || Self.providerKeys.contains(k) {   // a new key must not reuse a worker started with the old one
             app.unwarm(); app.js("models", app.modelChoices())
             if meeting.answering == nil {
@@ -5479,7 +5530,10 @@ final class SettingsWindow: NSObject, WKScriptMessageHandler, WKNavigationDelega
         if k == "hideWhenSharing" { NSApp.windows.forEach(applySharing) }
         if k == "menuIcon" { bar.item.isVisible = v as? Bool == true }
         if k == "paused" { if v as? Bool == true { meeting.stop(paused: true); app.close(clear: false); agentsUI.stopAll() }; bar.paint() }
-        if k == "safe" { app.js("mode", v as? Bool == true) }
+        if k == "safe" {   // Safe mode on means Ask first again; off means Bypass
+            app.js("mode", v as? Bool == true)
+            Prefs.set("permissionMode", v as? Bool == true ? (Prefs.str("permissionMode") == "auto" ? "auto" : "ask") : "bypass")
+        }
         if k == "login" {   // the LaunchAgent build.sh installed: enabled = starts at login
             if ProcessInfo.processInfo.environment["CLOVER_DIR"] != nil { Prefs.set("login",false); push(); return }
             let p = Process(); p.executableURL = URL(fileURLWithPath: "/bin/launchctl")
@@ -5490,9 +5544,9 @@ final class SettingsWindow: NSObject, WKScriptMessageHandler, WKNavigationDelega
     func userContentController(_ c: WKUserContentController, didReceive m: WKScriptMessage) { if let b = m.body as? [String: Any] { handle(b) } }
 
     // Settings → Intelligence → API key: what clover.py reads to call Claude, OpenAI, Azure OpenAI or a custom endpoint directly.
-    static let providerKeys = ["anthropicKey", "anthropicModel", "anthropicWorkModel", "openaiKey", "openaiBase", "openaiModel", "openaiWorkModel",
-                               "azureEndpoint", "azureKey", "azureDeployment", "azureWorkDeployment", "azureApiVersion",
-                               "customBase", "customKey", "customModel", "customWorkModel", "customFormat"]
+    static let providers = ["anthropic", "openai", "azure", "gemini", "openrouter", "groq", "mistral", "deepseek", "xai", "ollama", "custom"]
+    static let providerKeys = providers.flatMap { p in ["Key", "Base", "Model", "WorkModel"].map { p + $0 } } +
+        ["azureEndpoint", "azureDeployment", "azureWorkDeployment", "azureApiVersion", "customFormat", "agyModel"]
     var providerJob = 0
     func providerCall(_ flag: String, _ reply: String) {   // one JSON line from clover.py, sent back only if no newer request started
         providerJob += 1; let job = providerJob
@@ -7817,6 +7871,22 @@ enum Hands {
 }
 // MARK: - End Hands
 
+// A banner from Clover itself: macOS names and badges it Clover, with Clover's icon.
+func cloverNotify(_ text: String) {
+    let center = UNUserNotificationCenter.current()
+    center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+        guard granted else { return }
+        let content = UNMutableNotificationContent()
+        content.title = "Clover"; content.body = String(text.prefix(2000))
+        content.sound = UNNotificationSound(named: UNNotificationSoundName("Bloom.wav"))   // build.sh copies it to Resources, where macOS looks
+        center.add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
+    }
+}
+if CommandLine.arguments.count == 3, CommandLine.arguments[1] == "--notify" {   // clover.py: hand the text to the running app (exit 1: not running)
+    let me = ProcessInfo.processInfo.processIdentifier
+    guard NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "org.hackyard.clover").contains(where: { $0.processIdentifier != me }) else { exit(1) }
+    DistributedNotificationCenter.default().postNotificationName(.init("clover.notify"), object: CommandLine.arguments[2], deliverImmediately: true); usleep(50_000); exit(0)
+}
 if CommandLine.arguments == [CommandLine.arguments[0], "--raise"] || CommandLine.arguments == [CommandLine.arguments[0], "--raise", "user"] {
     DistributedNotificationCenter.default().postNotificationName(.init("clover.raise"), object: CommandLine.arguments.count == 3 ? "user" : nil, deliverImmediately: true); usleep(50_000); exit(0)
 }

@@ -232,7 +232,7 @@ class MeetingTests(unittest.TestCase):
         self.assertIn('My note', result['brief'])
 
     def test_non_claude_meeting_and_prep_stay_local(self):
-        for selected in ('devin', 'pi'):
+        for selected in ('antigravity',):
             with self.subTest(client=selected), patch.object(clover, 'client', return_value=selected), \
                  patch.object(clover.subprocess, 'Popen') as start:
                 with self.assertRaisesRegex(RuntimeError, 'stays on this Mac'):

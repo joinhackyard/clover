@@ -1,0 +1,15 @@
+name: Feature idea
+description: Something Clover should do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like Clover to do?
+      description: Describe it the way you'd say it to Clover.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why does it matter to you?

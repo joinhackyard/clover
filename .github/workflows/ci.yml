@@ -1,0 +1,51 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    name: Brain, engine and pages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Offline regressions (brain, provider engine, page harnesses)
+        run: python3 -m unittest discover -s tests -v
+      - name: Script syntax
+        run: bash -n build.sh install.sh
+      - name: Sounds and artwork rebuild cleanly
+        run: |
+          pip install --quiet pillow
+          python3 scripts/make_sounds.py
+          python3 scripts/make_art.py
+  macos:
+    name: Build Clover.app (macOS 26)
+    runs-on: macos-26
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and package
+        run: |
+          swiftc --version
+          CLOVER_PACKAGE="$RUNNER_TEMP/dist" ./build.sh
+      - name: Native self-test
+        run: '"$RUNNER_TEMP/dist/Clover.app/Contents/MacOS/Clover" --selftest'
+      - name: Zip the app
+        run: ditto -c -k --keepParent "$RUNNER_TEMP/dist/Clover.app" "$RUNNER_TEMP/Clover-macOS.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Clover-macOS
+          path: ${{ runner.temp }}/Clover-macOS.zip
+          retention-days: 14

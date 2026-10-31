@@ -6,15 +6,17 @@
 </p>
 
 <p align="center">
-  <b>🍀 Learns as you use it</b> &nbsp;·&nbsp; <b>🗣️ Hands-free</b> &nbsp;·&nbsp; <b>🔑 Any AI: Claude, OpenAI, Azure, your own endpoint</b> &nbsp;·&nbsp; <b>Free and open source</b>
+  <b>Clover is a free, open-source AI voice assistant for macOS.</b> Talk to your Mac, point at your screen, and let it do the work:<br>
+  window management, file search, screen reading, dictation, background agents and hands-free chat, on Claude, Antigravity, OpenAI, Gemini, Azure or a local model.
 </p>
 
 <p align="center">
-  <img alt="macOS 26" src="https://img.shields.io/badge/macOS_26-0B1F17?style=for-the-badge&logo=apple&logoColor=white">
-  <img alt="Swift" src="https://img.shields.io/badge/Swift-0B1F17?style=for-the-badge&logo=swift&logoColor=2FD27A">
-  <img alt="Claude" src="https://img.shields.io/badge/Claude-0B1F17?style=for-the-badge&logo=anthropic&logoColor=2FD27A">
-  <img alt="OpenAI and Azure" src="https://img.shields.io/badge/OpenAI_·_Azure_·_Custom-0B1F17?style=for-the-badge">
-  <a href="https://github.com/joinhackyard/clover"><img alt="Star on GitHub" src="https://img.shields.io/badge/★_Star_Clover-2FD27A?style=for-the-badge&logo=github&logoColor=0B1F17"></a>
+  <a href="https://github.com/joinhackyard/clover/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/joinhackyard/clover/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/joinhackyard/clover/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/joinhackyard/clover?color=2E9E6A&label=release"></a>
+  <img alt="macOS 26+" src="https://img.shields.io/badge/macOS-26%2B-1D1B18?logo=apple&logoColor=white">
+  <img alt="Swift" src="https://img.shields.io/badge/Swift-native-1D1B18?logo=swift&logoColor=F05138">
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-2E9E6A"></a>
+  <a href="https://github.com/joinhackyard/clover/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/joinhackyard/clover?style=flat&color=2E9E6A"></a>
 </p>
 
 ## Quick install
@@ -23,12 +25,12 @@
 curl -fsSL https://raw.githubusercontent.com/joinhackyard/clover/main/install.sh | bash
 ```
 
-Needs macOS 26 and one AI: Claude Code on a Claude plan (the default), **your own API key** (Claude API, OpenAI, Azure OpenAI or any OpenAI/Anthropic-compatible endpoint), Devin, Pi, or a local model. [Full install steps](#install)
+Needs macOS 26 and one AI: Claude Code on your Claude plan (the default), **Antigravity** on your Google plan, **your own API key** (Claude, OpenAI, Gemini, Azure OpenAI, OpenRouter, Groq, Mistral, DeepSeek, xAI) or a local model with Ollama. Or grab the ready-made app from [Releases](https://github.com/joinhackyard/clover/releases/latest). [Full install steps](#install)
 
 ## What it does
 
 - **Hands-free.** Say “Clover” (or your own wake word), ask, and keep talking after each answer. Clover reads answers aloud, chimes when it’s your turn, and understands **voice commands**: “stop”, “copy that”, “say that again”, “be quiet”, “thanks Clover”.
-- **Any AI.** Claude Code by default, or bring your own key for the Claude API, OpenAI, Azure OpenAI (classic deployments or the v1 API) or any custom endpoint: Ollama, LM Studio, vLLM, OpenRouter, Groq… Test the connection and pick models right in Settings.
+- **Any AI.** Claude Code or Antigravity on the plan you already pay for, no extra keys or logins. Or bring your own key for Claude, OpenAI, Gemini, Azure OpenAI, OpenRouter, Groq, Mistral, DeepSeek or xAI, run locally with Ollama, or point it at any endpoint. Test the connection and pick models right in Settings.
 - **Learns.** Ask for something new once and it works out the steps. Ask again and it runs in a blink, with no AI.
 - **Instant commands.** Opens apps, moves windows, plays music and searches the web with no AI at all.
 - **Sees your screen.** Ask about anything on screen. Ask “where do I click?” and it points at the spot.
@@ -40,7 +42,7 @@ Needs macOS 26 and one AI: Claude Code on a Claude plan (the default), **your ow
 - **Background agents.** Big jobs run behind your apps while you keep working.
 - **Meeting Copilot.** Answers and notes during calls, saved on your Mac.
 - **Remembers you.** Say “remember…” and every ask after that knows it.
-- **Private and safe.** Your voice stays on your Mac. Deletes, sends and purchases ask first. No telemetry unless you set it up.
+- **You choose how much it asks.** *Ask first*, *Auto* (asks only before deleting or buying) or *Bypass permissions*. Your voice stays on your Mac. No telemetry.
 
 ## Just ask
 
@@ -78,18 +80,29 @@ Settings → Intelligence → **AI provider**:
 
 | Provider | What you enter | Notes |
 |---|---|---|
-| **Claude Code** (default) | Sign in with your Claude plan | Background agents, connectors and routines need this one. |
+| **Claude Code** (default) | Nothing: your Claude plan sign-in | Background agents, connectors and routines run here. |
+| **Antigravity** | Nothing: your Antigravity (Google) sign-in | Runs the `agy` CLI headless on your existing plan. Clover’s safety gate is installed as its `PreToolUse` hook; if Antigravity doesn’t load the hook, Clover only lets it answer, never act. Optional model override. |
 | **API key → Claude API** | Anthropic key | Defaults: `claude-haiku-5-5` fast, `claude-sonnet-5-5` for real work. Uses prompt caching. |
 | **API key → OpenAI** | OpenAI key (base URL optional) | Defaults: `gpt-5-mini` fast, `gpt-5` for work. **Load models** lists your chat models. |
-| **API key → Azure OpenAI** | Endpoint, key, deployment (+ optional work deployment), API version | Classic `…/openai/deployments/<name>` URLs, or set the version to `v1` for the Azure AI Foundry v1 API. |
-| **API key → Custom** | Base URL, optional key, model, format | OpenAI-compatible chat completions (Ollama, LM Studio, vLLM, OpenRouter, Groq, Together…) or Anthropic Messages. |
-| **Devin** · **Pi** | Their own sign-in | Foreground asks. |
+| **API key → Azure OpenAI** | Endpoint, key, deployment (+ optional work deployment), API version | Classic `…/openai/deployments/<name>` URLs, or `v1` for the Azure AI Foundry v1 API. |
+| **API key → Google Gemini** | Gemini API key | `gemini-3.5-flash` fast, `gemini-3.1-pro` for work. |
+| **API key → OpenRouter · Groq · Mistral · DeepSeek · xAI** | That service’s key | Sensible fast/work defaults; change them or load the model list. |
+| **API key → Ollama** | Nothing (local) | Talks to `http://localhost:11434/v1`; pick a model you’ve pulled. |
+| **API key → Custom** | Base URL, optional key, model, format | Any OpenAI-compatible chat completions server (LM Studio, vLLM, Together…) or Anthropic Messages. |
 
 **Test connection** makes one tiny real call and tells you what’s wrong (bad key, wrong deployment, unreachable). With an API key, Clover runs its own tool loop: the model gets a `bash` tool and a `read_file` tool (screenshots come back as images), and every call goes through the same safety gate as Claude Code. **Cheapest** keeps every ask on the fast model, **Balanced** moves long jobs to the work model, **Most capable** always uses the work model. Meeting Copilot, meeting summaries and dictation clean-up use your key too. Keys stay in `~/.config/clover/settings.json` (mode 0600) and only go to the provider you chose.
 
-## Safe by default
+## Permissions
 
-Before anything deletes, sends, buys or changes a file, Clover asks you first. `rm`, `sudo`, disk tools and shutdown are always blocked, for every AI provider. Every exact command is in the ask log. Apple’s on-device speech turns your voice into text, and audio never leaves your Mac.
+Settings → Account & Access → **Safety** has three modes:
+
+| Mode | What Clover does |
+|---|---|
+| **Ask first** (default) | Shows an Allow card before anything deletes, sends, buys, runs a program or changes a file. |
+| **Auto** | Acts on its own and only asks before deleting or buying. |
+| **Bypass permissions** | Never asks. |
+
+In every mode, for every AI provider, `rm`, `sudo`, disk tools, shutdown and `git push` stay blocked. Every exact command is in the ask log. Apple’s on-device speech turns your voice into text, and audio never leaves your Mac.
 
 <details>
 <summary><b>How the shortcut, the box and the gestures work</b></summary>
@@ -123,7 +136,7 @@ Enable it in Settings → Meetings. Live answers during calls, local transcripts
 
 You need:
 - **macOS 26** or later (Clover uses Apple’s new on-device speech)
-- **One AI:** [Claude Code](https://claude.com/claude-code) on a Claude Pro/Max plan, **or** an API key for the Claude API / OpenAI / Azure OpenAI / any compatible endpoint, **or** the [Devin CLI](https://docs.devin.ai/cli), **or** [Pi](https://pi.dev)
+- **One AI:** [Claude Code](https://claude.com/claude-code) on a Claude Pro/Max plan, **or** the [Antigravity CLI](https://github.com/google-antigravity/antigravity-cli) signed in to your Google account, **or** an API key for any provider above, **or** [Ollama](https://ollama.com)
 - Apple’s command line tools: `xcode-select --install`
 
 ```bash
@@ -131,6 +144,10 @@ curl -fsSL https://raw.githubusercontent.com/joinhackyard/clover/main/install.sh
 ```
 
 It checks your Mac, downloads Clover to `~/.clover`, builds `~/Applications/Clover.app`, and opens it. Clover starts at login and updates itself (turn that off in Settings → About & Updates). The first launch opens a setup window that checks your AI and walks through each macOS permission.
+
+### Download the app
+
+Every tagged version is built by CI and attached to [Releases](https://github.com/joinhackyard/clover/releases/latest) as `Clover-vX.Y.Z-macOS.zip` with its SHA-256. The build is signed ad hoc, not notarized, so after unzipping into `~/Applications` run `xattr -dr com.apple.quarantine ~/Applications/Clover.app` once (or right-click → Open). The install script above builds the same app on your Mac and keeps it updated.
 
 ### Nix
 
