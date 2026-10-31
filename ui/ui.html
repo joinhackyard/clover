@@ -2,496 +2,534 @@
 <html><head><meta charset="utf-8">
 <!-- Clover overlay, by Hackyard (hackyard.org). Clover.app loads this, puts orbs.js in place of the marker below, and calls window.ui.* -->
 <style>
-  /* ── Hackyard palette and Clover's design tokens. Dark is the box's own glass (Clover.app keeps it dark); light paints its own glass. ── */
+  /* ── Clover's tokens, shared with the windows (settings, onboarding, agents, meeting). Light: warm paper; dark: a warm near-black
+     the box paints over its native glass. ink-3 and the light accent are for marks and fills, never small text (they miss AA). ── */
   :root {
-    --hy-clover: #2FD27A; --hy-clover-deep: #0E9F5A; --hy-mint: #8BF5C8; --hy-petal: #FF7EB6; --hy-sun: #FFD166; --hy-ink: #0B1F17;
-    color-scheme: dark;
-    --fg: #f3fbf6; --fg2: #d2ddd7; --fg3: #b9c7c0;
-    --fill: rgba(255,255,255,.07); --fill-2: rgba(255,255,255,.11); --fill-3: rgba(255,255,255,.16);
-    --hair: rgba(255,255,255,.12); --hair-2: rgba(255,255,255,.2); --shade: rgba(0,0,0,.28);
-    --accent: var(--hy-clover); --on-accent: var(--hy-ink); --accent-soft: rgba(47,210,122,.16); --accent-line: rgba(139,245,200,.38);
-    --link: var(--hy-mint); --accent-text: var(--hy-mint); --sun-text: var(--hy-sun); --ok: var(--hy-clover); --warn: #ffc46b; --danger: #ff5f6d; --petal-soft: rgba(255,126,182,.16);
-    --q-bg: linear-gradient(135deg, rgba(47,210,122,.26), rgba(14,159,90,.2)); --q-line: rgba(139,245,200,.28); --q-fg: #effff6;
-    --code-bg: rgba(0,0,0,.26); --glass-paint: transparent;
-    --ease: cubic-bezier(.2,.8,.2,1); --spring: cubic-bezier(.2,.9,.25,1.15);
-    --jelly: linear(0, .009, .035 2.1%, .141, .281 6.7%, .723 12.9%, .938 16.7%, 1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161, 1.154 29.9%, 1.129 32.8%, 1.051 39.6%, 1.017 43.1%, .991, .977 51%, .974 53.8%, .975 57.1%, .997 69.8%, 1.003 76.9%, 1.004 83.8%, 1);
+    color-scheme: light;
+    --bg: #FBF8F3; --surface: #FFFFFF; --ink: #1D1B18; --ink-2: #5E5A53; --ink-3: #8F8A81; --line: rgba(29,27,24,.09);
+    --accent: #2E9E6A; --accent-soft: color-mix(in oklab, var(--accent) 14%, transparent); --sage: #A8C3A0; --petal: #F2A7B8; --sun: #F4C76B;
+    /* derived: text-safe green, the filled button, quiet fills, a stronger hairline, soft layered shadows */
+    --accent-ink: #1A6B46; --accent-fill: #237F55; --on-accent: #FFFFFF;
+    --fill: rgba(29,27,24,.04); --fill-2: rgba(29,27,24,.07); --line-2: rgba(29,27,24,.15);
+    --danger: #B4473A; --danger-ink: #A33F33; --warn-ink: #7A5710; --sun-soft: color-mix(in oklab, var(--sun) 26%, transparent);
+    --petal-soft: color-mix(in oklab, var(--petal) 26%, transparent); --star: #8A5E00; --go-kbd: rgba(0,0,0,.16); --on-danger: #FFFFFF;
+    --q-bg: color-mix(in oklab, var(--accent) 9%, var(--surface));
+    --paint: color-mix(in srgb, var(--bg) 97%, transparent);
+    --shadow: 0 0 0 .5px var(--line), 0 1px 2px rgba(29,27,24,.04), 0 4px 12px -2px rgba(29,27,24,.05), 0 12px 28px -12px rgba(29,27,24,.1);
+    --shadow-sm: 0 0 0 .5px var(--line), 0 1px 2px rgba(29,27,24,.05);
+    --rim: inset 0 0 0 .5px var(--line-2);
+    --ring: 0 0 0 3px color-mix(in oklab, var(--accent) 20%, transparent);
+    /* motion: strong ease-out for enters, faster exits, springs sampled from a damped oscillator (ζ 1, .82, .68) */
+    --ease: cubic-bezier(.23, 1, .32, 1); --ease-out: var(--ease); --ease-in-out: cubic-bezier(.77, 0, .175, 1); --ease-drawer: cubic-bezier(.32, .72, 0, 1);
+    --spring: linear(0, .058, .18, .321, .455, .573, .671, .75, .812, .86, .897, .924, .945, .96, .971, .979, .985, .989, .992, .994, 1);
+    --spring-soft: linear(0, .027, .095, .186, .288, .392, .492, .584, .667, .738, .799, .85, .891, .924, .95, .97, .984, .995, 1.002, 1.007, 1.009, 1.011, 1.011, 1.011, 1.01, 1.009, 1.008, 1.007, 1.006, 1.005, 1);
+    --spring-bounce: linear(0, .036, .126, .245, .377, .509, .631, .739, .829, .902, .958, .999, 1.027, 1.044, 1.052, 1.054, 1.052, 1.047, 1.041, 1.033, 1.026, 1.02, 1.014, 1.009, 1.005, 1.002, 1, .998, .998, .997, 1);
+    --enter: 260ms; --exit: 160ms; --press: 120ms;
     --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; --mono: ui-monospace, "SF Mono", Menlo, monospace;
   }
-  @media (prefers-color-scheme: light) { :root:not([data-theme=dark]) {
-    color-scheme: light;
-    --fg: #0b1f17; --fg2: #3f5249; --fg3: #56685f;
-    --fill: rgba(11,31,23,.05); --fill-2: rgba(11,31,23,.08); --fill-3: rgba(11,31,23,.12);
-    --hair: rgba(11,31,23,.12); --hair-2: rgba(11,31,23,.2); --shade: rgba(11,31,23,.12);
-    --accent-soft: rgba(47,210,122,.18); --accent-line: rgba(14,159,90,.4); --link: #076a3b; --accent-text: #076a3b; --warn: #8a4d00; --sun-text: #7d5300;
-    --q-bg: linear-gradient(135deg, rgba(47,210,122,.24), rgba(139,245,200,.3)); --q-line: rgba(14,159,90,.28); --q-fg: #0b1f17;
-    --code-bg: rgba(11,31,23,.05); --glass-paint: rgba(250,253,251,.9);
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #1A1917; --surface: #23221F; --ink: #F4F1EA; --ink-2: #B9B4AA; --ink-3: #85807A; --line: rgba(244,241,234,.09);
+    --accent: #4CC38A; --accent-ink: #4CC38A; --accent-fill: #4CC38A; --on-accent: #10231A;
+    --fill: rgba(244,241,234,.05); --fill-2: rgba(244,241,234,.08); --line-2: rgba(244,241,234,.14);
+    --danger: #E3806D; --danger-ink: #EE9583; --warn-ink: #F4C76B; --sun-soft: color-mix(in oklab, var(--sun) 16%, transparent);
+    --petal-soft: color-mix(in oklab, var(--petal) 16%, transparent); --star: #F4C76B; --go-kbd: rgba(16,35,26,.14); --on-danger: #2A120D;
+    --q-bg: color-mix(in oklab, var(--accent) 14%, var(--surface));
+    --paint: color-mix(in srgb, var(--bg) 90%, transparent);
+    --shadow: 0 0 0 .5px var(--line-2), 0 1px 2px rgba(0,0,0,.2), 0 10px 26px -10px rgba(0,0,0,.45);
+    --shadow-sm: 0 0 0 .5px var(--line-2), 0 1px 2px rgba(0,0,0,.25);
+    --rim: inset 0 0 0 .5px var(--line-2), inset 0 1px 0 rgba(255,255,255,.04);
   } }
-  :root[data-theme=light] {
-    color-scheme: light;
-    --fg: #0b1f17; --fg2: #3f5249; --fg3: #56685f;
-    --fill: rgba(11,31,23,.05); --fill-2: rgba(11,31,23,.08); --fill-3: rgba(11,31,23,.12);
-    --hair: rgba(11,31,23,.12); --hair-2: rgba(11,31,23,.2); --shade: rgba(11,31,23,.12);
-    --accent-soft: rgba(47,210,122,.18); --accent-line: rgba(14,159,90,.4); --link: #076a3b; --accent-text: #076a3b; --warn: #8a4d00; --sun-text: #7d5300;
-    --q-bg: linear-gradient(135deg, rgba(47,210,122,.24), rgba(139,245,200,.3)); --q-line: rgba(14,159,90,.28); --q-fg: #0b1f17;
-    --code-bg: rgba(11,31,23,.05); --glass-paint: rgba(250,253,251,.9);
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #1A1917; --surface: #23221F; --ink: #F4F1EA; --ink-2: #B9B4AA; --ink-3: #85807A; --line: rgba(244,241,234,.09);
+    --accent: #4CC38A; --accent-ink: #4CC38A; --accent-fill: #4CC38A; --on-accent: #10231A;
+    --fill: rgba(244,241,234,.05); --fill-2: rgba(244,241,234,.08); --line-2: rgba(244,241,234,.14);
+    --danger: #E3806D; --danger-ink: #EE9583; --warn-ink: #F4C76B; --sun-soft: color-mix(in oklab, var(--sun) 16%, transparent);
+    --petal-soft: color-mix(in oklab, var(--petal) 16%, transparent); --star: #F4C76B; --go-kbd: rgba(16,35,26,.14); --on-danger: #2A120D;
+    --q-bg: color-mix(in oklab, var(--accent) 14%, var(--surface));
+    --paint: color-mix(in srgb, var(--bg) 90%, transparent);
+    --shadow: 0 0 0 .5px var(--line-2), 0 1px 2px rgba(0,0,0,.2), 0 10px 26px -10px rgba(0,0,0,.45);
+    --shadow-sm: 0 0 0 .5px var(--line-2), 0 1px 2px rgba(0,0,0,.25);
+    --rim: inset 0 0 0 .5px var(--line-2), inset 0 1px 0 rgba(255,255,255,.04);
   }
   html, body { margin: 0; background: transparent; overflow: hidden; -webkit-user-select: none; cursor: default;
-    font: 13px var(--font); color: var(--fg); -webkit-font-smoothing: antialiased; }
-  html { background: var(--glass-paint); }   /* dark: the native glass tint sits below the live window layer; light: the page paints its own */
-  /* Liquid Glass: a hairline rim, a soft top sheen and a faint clover glow behind the orb, all under the content and never hit-tested */
-  html::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; border-radius: 18px;
-    background: radial-gradient(140px 90px at 30px 26px, rgba(47,210,122,.13), transparent 70%), linear-gradient(to bottom, rgba(255,255,255,.05), transparent 46px);
-    box-shadow: inset 0 0 0 .5px var(--hair-2), inset 0 1px 0 rgba(255,255,255,.08); }
-  #card { padding: 14px 20px 18px; animation: pop .5s var(--jelly) both; box-sizing: border-box; transform-origin: 50% 0;
-    display: flex; flex-direction: column; max-height: var(--screen-height, 10000px); }
+    font: 13px/1.4 var(--font); color: var(--ink); -webkit-font-smoothing: antialiased; font-feature-settings: "kern"; }
+  html { background: var(--paint); }   /* paper in light; in dark a warm tint over the native glass, which still shows through a little */
+  html.theming, html.theming * { transition: color .25s ease, background-color .25s ease, border-color .25s ease, box-shadow .25s ease !important; }   /* a theme switch eases instead of flashing */
+  /* the panel's edge: one hairline, never a glow */
+  html::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; border-radius: 18px; box-shadow: var(--rim); }
+  #card { padding: 12px 16px 16px; box-sizing: border-box; transform-origin: 50% 0; display: flex; flex-direction: column; max-height: var(--screen-height, 10000px);
+    animation: boxin 200ms var(--ease) both; }
   #card.again { animation: none; }
   #card.held { box-sizing: border-box; display: flex; flex-direction: column; }   /* dragged to a height: keep it */
   #card.held #comp { margin-top: auto; } #card.held #thread { margin-bottom: 14px; }
-  /* gestures: the card follows two fingers; on release it springs home or flies off */
-  #card.springing, .springing { transition: transform .55s var(--jelly), opacity .3s var(--ease), filter .3s var(--ease) !important; }
-  #card.flying, .flying { transition: transform .32s cubic-bezier(.4,0,1,1), opacity .26s ease-in !important; }
+  /* gestures: the card follows two fingers; on release it springs home (a little bounce: the fingers carried it) or carries on off */
+  #card.springing, .springing { transition: transform 460ms var(--spring-bounce), opacity 200ms var(--ease), filter 200ms var(--ease) !important; }
+  #card.flying, .flying { transition: transform 240ms cubic-bezier(.2, .6, .4, 1), opacity 200ms var(--ease) !important; }
 
-  #fold { flex: none; width: 26px; height: 18px; padding: 0; border: 0; border-radius: 9px; display: grid; place-items: center; cursor: pointer;
-    background: none; color: var(--fg2); transition: color .2s, background .2s; }
-  #fold:is(:hover,.hot) { color: var(--fg); background: var(--fill); }
-  #fold svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  /* ── header: the clover, one status line, quiet controls ── */
+  #head { display: flex; align-items: center; gap: 8px; height: 40px; flex: none; }
+  canvas { width: 36px; height: 36px; flex: none; margin-left: -4px; }
+  #status { flex: 1 0 64px; min-width: 64px; font-size: 13px; font-weight: 500; letter-spacing: -.08px; line-height: 22px; color: var(--ink-2); white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; }
+  #status span { display: inline-block; max-width: 100%; vertical-align: top; overflow: hidden; text-overflow: ellipsis; animation: statusin 220ms var(--ease) both; }
+  /* working: a slow, low-contrast sheen across the words, the only "busy" signal besides the clover */
+  #status.live span { background: linear-gradient(90deg, var(--ink-2) 0 35%, var(--ink) 50%, var(--ink-2) 65% 100%); background-size: 250% 100%;
+    -webkit-background-clip: text; background-clip: text; color: transparent; animation: statusin 220ms var(--ease) both, sheen 2.2s linear infinite; }
+  #fold { flex: none; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 7px; display: grid; place-items: center; cursor: pointer;
+    background: none; color: var(--ink-2); transition: color 150ms ease, background-color 150ms ease, opacity 160ms ease, transform var(--press) var(--ease); }
+  #fold:is(:hover,.hot) { color: var(--ink); background: var(--fill-2); }
+  #fold svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   #fold:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  body.folded #card { padding: 6px 20px; min-height: 0 !important; }
+  #x { position: relative; flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; color: var(--ink-2);
+    background: var(--fill); transition: background-color 150ms ease, color 150ms ease, transform var(--press) var(--ease); }
+  #x svg { width: 8px; height: 8px; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+  #x.hot { background: var(--fill-2); color: var(--ink); }
+  #x:active { transform: scale(.94); }
+
+  /* minimized: just the header. Its content leaves at once; the box's sprung height does the folding */
+  body.folded #card { padding: 4px 16px; min-height: 0 !important; }
   body.folded :is(#thread, #comp, #pointbar, #mode, #agents-pill, .e, #grip) { display: none !important; }
   body.folded #fold { opacity: 0; pointer-events: none; }
   body.folded:is(:hover,.hot) #fold, body.folded #fold:focus-visible { opacity: 1; pointer-events: auto; }
   body.folded #status span:empty::before { content: 'Done'; }
 
-  #head { display: flex; align-items: center; gap: 7px; height: 44px; flex: none; }
-  canvas { width: 44px; height: 44px; flex: none; margin-left: -4px; transition: transform .35s var(--spring); }
-  #status { flex: 1 0 64px; min-width: 64px; font-size: 12.5px; font-weight: 500; letter-spacing: -.05px; line-height: 22px; color: var(--fg2); white-space: nowrap; overflow: hidden;
-    text-overflow: ellipsis; }
-  .elapsed { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 16px; color: var(--fg2); font-size: 10.5px; line-height: 16px; animation: in .25s var(--ease) both; }
-  .elapsed b { color: var(--fg2); font-weight: 400; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .elapsed .redo { margin-left: auto; height: 22px; padding: 0 9px; border: 0; border-radius: 11px; background: none; font: 500 11px var(--font); color: var(--fg2); cursor: pointer; transition: color .2s, background .2s; }
-  .elapsed .redo:is(:hover,.hot) { color: var(--fg); background: var(--fill); }
-  /* hands-free: a pill with a little clover that keeps turning, and how to end it */
-  .elapsed .hf { display: inline-flex; align-items: center; gap: 6px; margin-left: 6px; height: 22px; padding: 0 10px 0 4px; border-radius: 11px;
-    background: var(--accent-soft); box-shadow: inset 0 0 0 .5px var(--accent-line); color: var(--fg); font: 500 11px var(--font); animation: pop .5s var(--jelly) both; }
-  .hf .hf-clover { width: 16px; height: 16px; flex: none; animation: hfspin 2.6s linear infinite; }
-  .hf .hf-clover path { fill: var(--hy-clover); } .hf .hf-clover circle { fill: var(--hy-mint); }
-  .hf .hf-l { color: var(--fg2); font-weight: 400; } .hf .hf-l i { font-style: normal; animation: hfdot 1.4s infinite both; }
-  .hf .hf-l i:nth-child(2) { animation-delay: .2s; } .hf .hf-l i:nth-child(3) { animation-delay: .4s; }
-  .hf-hint { flex-basis: 100%; margin: 2px 0 0 6px; color: var(--fg3); font-size: 10.5px; }
-  .elapsed .hf ~ .hf-hint { animation: in .35s var(--ease) .2s both; }
-  @keyframes hfdot { 0% { opacity: 0; } 25%, 60% { opacity: 1; } 85%, 100% { opacity: 0; } }   /* dots fade in one by one, then out */
-  @keyframes hfspin { 0% { transform: rotate(0) scale(1); } 50% { transform: rotate(180deg) scale(1.12); } 100% { transform: rotate(360deg) scale(1); } }
-  #status span { display: inline-block; max-width: 100%; vertical-align: top; overflow: hidden; text-overflow: ellipsis; animation: in .35s var(--ease) both; }
-  #status.live span { background: linear-gradient(90deg, var(--fg2) 0%, var(--hy-mint) 45%, var(--fg2) 90%); background-size: 200% 100%;
-    -webkit-background-clip: text; color: transparent; animation: in .35s var(--ease) both, shimmer 1.6s linear infinite; }
-
-  /* Automatic following must be immediate: repeated live updates keep restarting a smooth scroll below the current turn. */
-  #thread { container-type: inline-size; max-height: 420px; min-height: 0; overflow-y: auto; padding-top: 2px;
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 100%); }
+  /* ── the thread ── Automatic following must be immediate: repeated live updates keep restarting a smooth scroll below the current turn. */
+  #thread { container-type: inline-size; max-height: 420px; min-height: 0; overflow-y: auto; padding: 2px 6px 6px; margin: 0 -6px -6px;   /* a gutter: card shadows and rings aren't clipped flat */
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 12px, #000 100%); }
   #thread::-webkit-scrollbar { width: 0; }
   #thread:empty { display: none; }
-  .turn { padding-top: 12px; animation: in .4s var(--ease) both; transition: opacity .4s var(--ease); }
-  .turn + .turn { margin-top: 18px; padding-top: 18px; border-top: .5px solid var(--hair); }
-  .turn.old .a { color: var(--fg2); }
+  .turn { padding-top: 10px; animation: rise var(--enter) var(--ease) both; }
+  .turn + .turn { margin-top: 16px; padding-top: 16px; border-top: .5px solid var(--line); }
+  .turn.old .a { color: var(--ink-2); transition: color 300ms ease; }
 
-  .q { margin-left: auto; width: fit-content; max-width: 80%; padding: 9px 14px; border-radius: 18px 18px 6px 18px;
-    background: var(--q-bg); box-shadow: inset 0 0 0 .5px var(--q-line), 0 6px 18px -10px rgba(14,159,90,.6);
-    font-size: 13.5px; line-height: 1.45; color: var(--q-fg); overflow-wrap: anywhere; cursor: pointer; transform-origin: 100% 100%;
-    animation: bubble .55s var(--jelly) both; transition: font-size .3s var(--ease), color .3s; }
-  .q.live { font-size: 15px; color: var(--q-fg); }
-  .q.live::after { content: ""; display: inline-block; width: 1.5px; height: 1em; margin-left: 2px; vertical-align: -2px;
-    background: var(--hy-mint); border-radius: 1px; animation: blink 1s steps(1) infinite; }
-  .shot { display: block; margin: 0 0 4px auto; padding: 0; border: 0; border-radius: 12px; overflow: hidden; background: none; cursor: zoom-in;
-    box-shadow: inset 0 0 0 .5px var(--hair-2); }   /* the marked crop, sent with this ask */
-  .shot img { display: block; max-width: 120px; max-height: 72px; transition: max-width .3s var(--ease), max-height .3s var(--ease); }
+  /* your words: a soft bubble on the right. While you talk, new words settle in and the newest (still changing) word stays light */
+  .q { margin-left: auto; width: fit-content; max-width: 82%; padding: 8px 13px; border-radius: 16px 16px 5px 16px; box-sizing: border-box;
+    background: var(--q-bg); box-shadow: inset 0 0 0 .5px color-mix(in oklab, var(--accent) 22%, transparent);
+    font-size: 15px; line-height: 1.45; letter-spacing: -.12px; color: var(--ink); overflow-wrap: anywhere; cursor: pointer; transform-origin: 100% 100%;
+    animation: bubble 300ms var(--spring-soft) both; }
+  .q .lw { animation: lw 240ms var(--ease) backwards; transition: opacity 220ms ease; }
+  .q.live .lw.tail { opacity: .55; }
+  .shot { display: block; margin: 0 0 6px auto; padding: 0; border: 0; border-radius: 10px; overflow: hidden; background: none; cursor: zoom-in;
+    box-shadow: var(--shadow-sm); animation: rise var(--enter) var(--ease) both; }   /* the marked crop, sent with this ask */
+  .shot img { display: block; max-width: 120px; max-height: 72px; transition: max-width 260ms var(--ease), max-height 260ms var(--ease); }
   .shot.big { max-width: 86%; cursor: zoom-out; } .shot.big img { max-width: 100%; max-height: 220px; }
   .q.empty:not(.hear) { display: none; }
-  .q.empty.hear { color: var(--fg2); } .q.empty.hear::before { content: "Listening…"; }   /* voice: the bubble waits for words */
+  .q.empty.hear { color: var(--ink-2); background: transparent; box-shadow: inset 0 0 0 1px var(--line-2); }   /* voice: an outline that waits for words */
+  .q.empty.hear::before { content: "Listening…"; }
   .q.reply { margin-top: 14px; }   /* a spoken answer to a choices card, in the card's place */
-  /* dictation: a pill just wide enough for the orb and its wave (and the lock once locked). Released, it folds into a circle with
-     the working orb, then the orb and a green check; a message (nothing to insert into, an error) is one short line. No transcript, no
-     dividers. The panel takes #card's size (fit) and animates to it, so each state morphs into the next */
-  body.dictate #card { flex-direction: row; align-items: center; justify-content: center; gap: 8px; width: max-content; min-width: 36px; min-height: 36px; margin: 0 auto; padding: 0 12px 0 4px; }
+
+  /* ── dictation: a small pill, just the clover and its wave (and the lock once locked). Released, it folds into a circle with the
+     working clover, then a check; a message is one short line. The panel takes #card's size (fit) and animates to it, so each state
+     morphs into the next ── */
+  body.dictate #card { flex-direction: row; align-items: center; justify-content: center; gap: 8px; width: max-content; min-width: 36px; min-height: 36px; margin: 0 auto; padding: 0 12px 0 4px; animation: none; }
   body.dictate:is(.finishing, .done) #card { padding: 0 4px; }
-  body.dictate.said #card { padding: 4px 16px 4px 4px; }
+  body.dictate.said #card { padding: 4px 14px 4px 4px; }
   body.dictate #head { height: auto; } body.dictate #head > :not(#orb), body.dictate :is(#thread, #comp, #pointbar, .e, #grip) { display: none; }
-  body.dictate #orb { width: 28px; height: 28px; margin: 0; animation: morph .35s var(--spring) both; }
+  body.dictate #orb { width: 28px; height: 28px; margin: 0; animation: morph 260ms var(--spring-soft) both; }
   #dictwave { display: none; }
-  body.dictate.hearing #dictwave { display: flex; align-items: center; gap: 2px; width: 43px; height: 28px; flex: none; }
-  #dictwave i { display: block; width: 3px; height: 3px; border-radius: 3px; background: linear-gradient(var(--hy-mint), var(--hy-clover)); transition: height .1s var(--ease); }
+  /* the wave: nine bars that rise from the middle out, each on its own spring (driven from script by transform only) */
+  body.dictate.hearing #dictwave { display: flex; align-items: center; gap: 3px; height: 28px; flex: none; }
+  #dictwave i { display: block; width: 3px; height: 18px; border-radius: 2px; background: var(--accent); transform: scaleY(.17); transform-origin: 50% 50%; will-change: transform; }
   #check { display: none; }
-  body.dictate.done #check { display: block; position: relative; flex: none; width: 28px; height: 28px; animation: morph .4s var(--jelly) both; }
-  body.dictate.done #check::before { content: ""; position: absolute; left: 8px; top: 8px; width: 12px; height: 6px; border-left: 2px solid var(--ok); border-bottom: 2px solid var(--ok); border-radius: 1px; transform: rotate(-45deg); }
-  #lock { display: none; flex: none; width: 10px; height: 13px; color: var(--fg2); fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
+  body.dictate.done #check { display: grid; place-items: center; position: relative; flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--accent-soft); animation: morph 300ms var(--spring-bounce) both; }
+  body.dictate.done #check::before { content: ""; width: 11px; height: 5.5px; margin-top: -3px; border-left: 2px solid var(--accent-ink); border-bottom: 2px solid var(--accent-ink); border-radius: 1px;
+    transform: rotate(-45deg); clip-path: inset(0 0 0 0); animation: tick 260ms var(--ease) 80ms both; }   /* the check draws itself in */
+  #lock { display: none; flex: none; width: 10px; height: 13px; color: var(--ink-2); fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
   #lock rect { fill: currentColor; stroke: none; }
-  body.dictate.locked #lock { display: block; animation: in .25s var(--ease) both; }
-  /* locked (double tap): the whole pill wears a sunny ring; the panel's 18px corners clip it to the pill */
-  body.dictate::after { content: ""; position: fixed; inset: 0; border-radius: 18px; pointer-events: none; opacity: 0; transition: opacity .3s var(--ease);
-    box-shadow: inset 0 0 0 1.5px rgba(255,209,102,.9), inset 0 0 12px rgba(255,209,102,.35); }
+  body.dictate.locked #lock { display: block; animation: rise 220ms var(--ease) both; }
+  /* locked (double tap): the pill wears a warm sun ring; the panel's corners clip it to the pill */
+  body.dictate::after { content: ""; position: fixed; inset: 0; border-radius: 18px; pointer-events: none; opacity: 0; transition: opacity 220ms var(--ease);
+    box-shadow: inset 0 0 0 1.5px rgba(244,199,107,.85); }
   body.dictate.locked::after { opacity: 1; }
   .dn { display: none; }
   body.dictate .dn { display: block; position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }   /* not shown, still read out ("Cleaning up…", "Inserted") */
   body.dictate.said .dn { display: flex; position: static; align-items: center; gap: 6px; width: auto; height: auto; max-width: 290px; overflow: visible; clip-path: none; white-space: normal;
-    font-size: 12px; line-height: 16px; color: var(--fg); animation: fade .25s var(--ease) both; }
-  .dn button { border:0; border-radius:6px; padding:3px 8px; font:inherit; color:var(--fg2); background:none; text-decoration:underline; cursor:pointer; flex:none; }
-  .dn button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-  .dn .idea { padding:0; color:inherit; text-decoration:none; text-align:left; } .dn .ideax { display:grid; place-items:center; width:20px; height:20px; padding:0; }
-  .dn .ideax svg { width:8px; height:8px; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; }
-  .dn.tick { animation: in .25s var(--ease) both; }
-  .dn.tick::before { content: ""; flex: none; width: 8px; height: 4px; border-left: 1.5px solid var(--ok); border-bottom: 1.5px solid var(--ok); transform: translateY(-1px) rotate(-45deg); }
+    font-size: 13px; line-height: 18px; color: var(--ink); animation: rise 220ms var(--ease) both; }
+  .dn button { border: 0; border-radius: 7px; padding: 3px 8px; font: 500 13px var(--font); color: var(--accent-ink); background: none; cursor: pointer; flex: none;
+    transition: background-color 150ms ease, transform var(--press) var(--ease); }
+  .dn button:is(:hover,.hot) { background: var(--fill-2); } .dn button:active { transform: scale(.97); }
+  .dn button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .dn .idea { flex: 1 1 auto; min-width: 0; padding: 0; color: inherit; font-weight: 400; text-align: left; background: none !important; } .dn .ideax { display: grid; place-items: center; width: 22px; height: 22px; padding: 0; color: var(--ink-2); }
+  .dn .ideax svg { width: 8px; height: 8px; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+  .dn.tick { animation: rise 220ms var(--ease) both; }
+  .dn.tick::before { content: ""; flex: none; width: 8px; height: 4px; border-left: 1.5px solid var(--accent-ink); border-bottom: 1.5px solid var(--accent-ink); transform: translateY(-1px) rotate(-45deg); }
 
-  .steps { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; }
+  /* ── what Clover is doing: a short list, the live step with a softly pulsing dot ── */
+  .steps { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
   .steps:empty { display: none; }
-  .steps[data-more]::before { content: "+" attr(data-more) " earlier"; font-size: 11px; color: var(--fg2); padding-left: 12px; }
-  .step { font-size: 12px; line-height: 16px; color: var(--fg2); display: flex; gap: 7px; align-items: center; white-space: nowrap;
-    overflow: hidden; animation: stepin .45s var(--jelly) both; }
-  .step::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--fill-3);
-    transition: background .3s, box-shadow .3s, transform .4s var(--spring); }
+  .steps[data-more]::before { content: "+" attr(data-more) " earlier"; font-size: 12px; color: var(--ink-2); padding-left: 14px; }
+  .step { font-size: 13px; line-height: 18px; color: var(--ink-2); display: flex; gap: 8px; align-items: center; white-space: nowrap;
+    overflow: hidden; animation: stepin var(--enter) var(--ease) both; }
+  .step::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--ink-3); opacity: .55;
+    transition: background-color 200ms ease, opacity 200ms ease, transform 260ms var(--spring-soft); }
   .step span { overflow: hidden; text-overflow: ellipsis; }
-  .step.live { color: var(--fg); }
-  .step.live::before { background: var(--hy-mint); box-shadow: 0 0 8px var(--hy-clover); animation: pulse 1s ease-in-out infinite; }
-  .step.done::before { background: var(--ok); transform: scale(.9); }
+  .step.live { color: var(--ink); }
+  .step.live::before { background: var(--accent); opacity: 1; animation: breathe 1.4s ease-in-out infinite; }
+  .step.done::before { background: var(--accent); opacity: .45; transform: scale(.85); }
+  .step.cut { color: var(--ink-2); text-decoration: line-through; text-decoration-color: var(--line-2); }
   /* The mini's picture is drawn under this see-through page, so nothing may sit or scroll over it: the mini is not sticky and the
-     steps stay in flow below it, clipped to their own box. Three 16px rows tall, so adding steps never moves the mini; older rows slide out the top. */
-  .turn.preview .steps { height: 56px; margin-top: 6px; gap: 4px; justify-content: flex-end; overflow: clip;
+     steps stay in flow below it, clipped to their own box. Three rows tall, so adding steps never moves the mini; older rows slide out the top. */
+  .turn.preview .steps { height: 58px; margin-top: 6px; gap: 2px; justify-content: flex-end; overflow: clip;
     -webkit-mask-image: linear-gradient(to bottom, transparent, #000 20px); }
   .turn.preview .steps[data-more]::before { content: none; }
   .turn.preview .step { flex: none; animation: none; }
 
-  .mini { display: grid; grid-template-rows: 0fr; margin-top: 0; opacity: 0; transform: translateY(6px) scale(.96);
-    transform-origin: top left; transition: grid-template-rows .42s var(--ease), margin .42s var(--ease), opacity .24s, transform .42s var(--spring); }
+  /* ── the mini screen: the target window, live, in a calm frame ── */
+  .mini { display: grid; grid-template-rows: 0fr; margin-top: 0; opacity: 0; transform: translateY(6px) scale(.97);
+    transform-origin: top left; transition: grid-template-rows 300ms var(--ease), margin 300ms var(--ease), opacity 220ms var(--ease), transform 300ms var(--spring-soft); }
   .mini.on { grid-template-rows: 1fr; margin-top: 10px; opacity: 1; transform: none; }
   .mini-inner { min-height: 0; overflow: hidden; padding: 0 4px; margin-left: -4px; }
   .mini-view { position: relative; display: block; padding: 0; width: 100%; height: calc((100cqw - 4px) * .625); border: 0;   /* 16:10 of its width (4px: .mini-inner's inset). Not aspect-ratio: WebKit then keeps the mini's row at its old height when the box widens, so the picture covers the steps */
-    border-radius: 14px; background: transparent; overflow: hidden; cursor: pointer; color: #f3fbf6;
-    box-shadow: inset 0 0 0 .5px rgba(255,255,255,.16), 0 10px 26px rgba(0,0,0,.3); transition: box-shadow .24s; }
-  .mini-view:is(:hover,.hot) { box-shadow: inset 0 0 0 1px var(--accent-line), 0 12px 30px rgba(0,0,0,.36); }   /* no scale: the native picture under it can't follow */
+    border-radius: 12px; background: transparent; overflow: hidden; cursor: pointer; color: #F4F1EA;
+    box-shadow: inset 0 0 0 .5px rgba(244,241,234,.14), 0 6px 18px -8px rgba(0,0,0,.35); transition: box-shadow 200ms ease; }
+  .mini-view:is(:hover,.hot) { box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 60%, transparent), 0 8px 22px -8px rgba(0,0,0,.4); }   /* no scale: the native picture under it can't follow */
   .mini-fallback { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-    background: radial-gradient(120% 90% at 50% 0%, rgba(47,210,122,.12), transparent 70%), rgba(14,22,18,.96); transition: opacity .3s; }
-  .mini-fallback::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(139,245,200,.07) 50%, transparent 70%);
+    background: #23221F; transition: opacity 260ms ease; }
+  .mini-fallback::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(244,241,234,.05) 50%, transparent 70%);
     animation: sweep 1.8s linear infinite; will-change: transform; }   /* first frame on its way; transform, not background-position, so the GPU moves it without repaints */
-  @keyframes sweep { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
   .mini.live .mini-fallback { opacity: 0; pointer-events: none; }
-  .mini-fallback img { width: 34px; height: 34px; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(0,0,0,.4)); }
-  .mini-title { max-width: 80%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 11.5px var(--font); color: #b8c6be; }
+  .mini-fallback img { width: 32px; height: 32px; object-fit: contain; }
+  .mini-title { max-width: 80%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 13px var(--font); color: #B9B4AA; }
   .mini-tag, .mini-hint { position: absolute; top: 8px; display: flex; align-items: center; gap: 6px; height: 22px; padding: 0 9px; box-sizing: border-box;
-    border-radius: 11px; font: 500 11px var(--font); color: #f3fbf6; background: rgba(14,22,18,.7);
-    box-shadow: inset 0 0 0 .5px rgba(255,255,255,.16), 0 2px 8px rgba(0,0,0,.3); -webkit-backdrop-filter: blur(14px) saturate(1.6); backdrop-filter: blur(14px) saturate(1.6); }
+    border-radius: 11px; font: 500 12px var(--font); color: #F4F1EA; background: rgba(26,25,23,.72);
+    box-shadow: inset 0 0 0 .5px rgba(244,241,234,.14); -webkit-backdrop-filter: blur(12px) saturate(1.4); backdrop-filter: blur(12px) saturate(1.4); }
   .mini-tag { left: 8px; max-width: calc(100% - 90px); }
   .mini-tag span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .mini-tag i { width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--hy-clover); box-shadow: 0 0 6px var(--hy-clover); animation: pulse 1.2s ease-in-out infinite; }
-  .mini.done .mini-tag i { width: 8px; height: 4px; border-radius: 0; background: none; box-shadow: none; animation: none;
-    border-left: 1.5px solid var(--ok); border-bottom: 1.5px solid var(--ok); transform: rotate(-45deg) translate(1px,-1px); }
-  .mini-hint { right: 8px; opacity: 0; transform: translateY(-3px); transition: opacity .2s, transform .24s var(--ease); }
+  .mini-tag i { width: 6px; height: 6px; flex: none; border-radius: 50%; background: #4CC38A; animation: breathe 1.4s ease-in-out infinite; }
+  .mini.done .mini-tag i { width: 8px; height: 4px; border-radius: 0; background: none; animation: none;
+    border-left: 1.5px solid #4CC38A; border-bottom: 1.5px solid #4CC38A; transform: rotate(-45deg) translate(1px,-1px); }
+  .mini-hint { right: 8px; opacity: 0; transform: translateY(-3px); transition: opacity 160ms ease, transform 200ms var(--ease); }
   .mini-view:is(:hover,.hot) .mini-hint, .mini-view:focus-visible .mini-hint { opacity: 1; transform: none; }
-  .mini-point { position: absolute; width: 24px; height: 24px; margin: -12px; border: 1px solid rgba(139,245,200,.85);
-    border-radius: 50%; background: rgba(47,210,122,.2); box-shadow: 0 0 14px rgba(47,210,122,.35); pointer-events: none; animation: mini-ripple .8s var(--ease) both; }
-  .mini-point.scroll { width: 44px; height: 16px; margin: -8px -22px; border: 0; border-radius: 8px;
-    background: linear-gradient(transparent, rgba(47,210,122,.5), transparent); animation: mini-scroll .65s var(--ease) both; }
-  .mini-point.type { width: 2px; height: 18px; margin: -9px -1px; border: 0; border-radius: 1px; background: var(--hy-clover); animation: mini-caret .8s var(--ease) both; }
-  @keyframes mini-ripple { from { opacity: .9; transform: scale(.5); } to { opacity: 0; transform: scale(1.8); } }
+  .mini-point { position: absolute; width: 22px; height: 22px; margin: -11px; border: 1.5px solid #4CC38A;
+    border-radius: 50%; background: rgba(76,195,138,.18); pointer-events: none; animation: mini-ripple 700ms var(--ease) both; }
+  .mini-point.scroll { width: 40px; height: 14px; margin: -7px -20px; border: 0; border-radius: 7px;
+    background: linear-gradient(transparent, rgba(76,195,138,.45), transparent); animation: mini-scroll 600ms var(--ease) both; }
+  .mini-point.type { width: 2px; height: 16px; margin: -8px -1px; border: 0; border-radius: 1px; background: #4CC38A; animation: mini-caret 800ms var(--ease) both; }
+  @keyframes sweep { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+  @keyframes mini-ripple { from { opacity: .9; transform: scale(.6); } to { opacity: 0; transform: scale(1.7); } }
   @keyframes mini-scroll { from { opacity: 0; transform: translate(0,0); } 30% { opacity: 1; } to { opacity: 0; transform: translate(var(--dx),var(--dy)); } }
   @keyframes mini-caret { 0%, 100% { opacity: 0; } 30%, 65% { opacity: .9; } }
 
-  .a { margin-top: 16px; font-size: 15px; line-height: 1.6; letter-spacing: -.1px; overflow-wrap: anywhere; cursor: copy; }
+  /* ── the answer: plain, readable type. Light Markdown and TeX math (built as DOM nodes, never HTML from the model) ── */
+  .a { margin-top: 14px; font-size: 15px; line-height: 1.55; letter-spacing: -.12px; overflow-wrap: anywhere; cursor: copy; }
   .a:empty { display: none; }
-  /* light Markdown and TeX math in answers (built as DOM nodes, never HTML from the model) */
-  .a :where(p, ul, ol, .h, blockquote) { margin: 0; } .a > :not(.w) + :not(.w) { margin-top: 14px; }
-  .a > .h:not(:first-child) { margin-top: 24px; } .a > .h + :not(.w) { margin-top: 6px; }   /* a section heading sits with the text it heads */
-  .a :is(ul, ol) { padding-left: 22px; } .a li { padding-left: 6px; } .a li + li { margin-top: 6px; } .a li::marker { color: var(--hy-clover); }
-  .a .h { font-size: 12px; font-weight: 700; line-height: 1.4; letter-spacing: .06em; text-transform: uppercase; color: var(--fg); } .a strong { font-weight: 650; color: var(--fg); }
-  .a del { color: var(--fg3); text-decoration-color: var(--hy-petal); }
-  .a blockquote { padding: 2px 0 2px 12px; border-left: 2px solid var(--hy-petal); color: var(--fg2); }
-  .a pre { margin: 0; padding: 10px 12px; border-radius: 12px; overflow-x: auto; font: 12.5px/1.5 var(--mono); background: var(--code-bg); box-shadow: inset 0 0 0 .5px var(--hair); }
+  .a :where(p, ul, ol, .h, blockquote) { margin: 0; } .a > :not(.w) + :not(.w) { margin-top: 12px; }
+  .a > .h:not(:first-child) { margin-top: 20px; } .a > .h + :not(.w) { margin-top: 4px; }   /* a section heading sits with the text it heads */
+  .a :is(ul, ol) { padding-left: 20px; } .a li { padding-left: 4px; } .a li + li { margin-top: 4px; } .a li::marker { color: var(--ink-3); }
+  .a .h { font-size: 15px; font-weight: 600; line-height: 1.4; letter-spacing: -.12px; color: var(--ink); } .a strong { font-weight: 600; color: var(--ink); }
+  .a del { color: var(--ink-2); text-decoration-color: var(--ink-3); }
+  .a blockquote { padding: 1px 0 1px 12px; border-left: 2px solid var(--sage); color: var(--ink-2); }
+  .a pre { margin: 0; padding: 10px 12px; border-radius: 10px; overflow-x: auto; font: 12.5px/1.55 var(--mono); background: var(--fill); box-shadow: inset 0 0 0 .5px var(--line); }
   .a pre::-webkit-scrollbar { height: 0; }
   /* a code block's header: its language and a Copy button (added once the answer is done) */
-  .code-head { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 4px 0 12px; border-radius: 12px 12px 0 0; background: var(--fill);
-    box-shadow: inset 0 0 0 .5px var(--hair); font: 600 10.5px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--fg3); animation: fade .3s var(--ease) both; }
+  .code-head { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 4px 0 12px; border-radius: 10px 10px 0 0; background: var(--fill);
+    box-shadow: inset 0 0 0 .5px var(--line); font: 500 12px var(--font); color: var(--ink-2); animation: fade 200ms ease both; }
   .code-head span { flex: 1; }
-  .a > .code-head + pre:not(.w) { margin-top: 0; border-radius: 0 0 12px 12px; }
-  .code-head button, .acts button { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px; border: 0; border-radius: 11px; cursor: pointer;
-    font: 500 11px var(--font); letter-spacing: 0; text-transform: none; color: var(--fg2); background: none; transition: color .2s, background .2s, transform .35s var(--spring); }
-  .code-head button:is(:hover,.hot), .acts button:is(:hover,.hot) { color: var(--fg); background: var(--fill-2); }
-  .code-head button:active, .acts button:active { transform: scale(.94); }
-  .code-head button.did, .acts button.did { color: var(--hy-clover); }
-  .code-head svg, .acts svg { width: 12px; height: 12px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-  .a .table { overflow-x: auto; border-radius: 12px; box-shadow: inset 0 0 0 .5px var(--hair); background: var(--fill); }
+  .a > .code-head + pre:not(.w) { margin-top: 0; border-radius: 0 0 10px 10px; box-shadow: inset 0 0 0 .5px var(--line), inset 0 .5px 0 var(--line); }
+  .code-head button, .acts button { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 9px; border: 0; border-radius: 8px; cursor: pointer;
+    font: 500 13px var(--font); letter-spacing: -.05px; color: var(--ink-2); background: none;
+    transition: color 150ms ease, background-color 150ms ease, transform var(--press) var(--ease); }
+  .code-head button:is(:hover,.hot), .acts button:is(:hover,.hot) { color: var(--ink); background: var(--fill-2); }
+  .code-head button:active, .acts button:active { transform: scale(.97); }
+  .code-head button.did, .acts button.did { color: var(--accent-ink); }
+  .code-head svg, .acts svg { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .acts button span { display: inline-block; animation: fade 160ms ease both; }   /* "Copied" crossfades in */
+  .a .table { overflow-x: auto; border-radius: 10px; box-shadow: inset 0 0 0 .5px var(--line-2); }
   .a .table::-webkit-scrollbar { height: 0; }
   .a table { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.45; font-variant-numeric: tabular-nums; }
-  .a :is(th, td) { padding: 7px 12px; text-align: left; vertical-align: top; overflow-wrap: break-word; border-bottom: .5px solid var(--hair); }
-  .a th { font-size: 11px; font-weight: 600; letter-spacing: .03em; color: var(--fg2); background: var(--fill); } .a tr:last-child td { border-bottom: 0; }
-  .a tr:nth-child(2n+3) td { background: rgba(127,127,127,.04); }
-  .a hr { border: 0; border-top: .5px solid var(--hair-2); }
-  .a code { padding: 1px 5px; border-radius: 6px; font: 13px var(--mono); background: var(--fill-2); }
+  .a :is(th, td) { padding: 7px 12px; text-align: left; vertical-align: top; overflow-wrap: break-word; border-bottom: .5px solid var(--line); }
+  .a th { font-weight: 600; color: var(--ink-2); background: var(--fill); } .a tr:last-child td { border-bottom: 0; }
+  .a hr { border: 0; border-top: .5px solid var(--line-2); }
+  .a code { padding: 1px 5px; border-radius: 5px; font: 13px var(--mono); background: var(--fill-2); }
   .a pre code { padding: 0; background: none; }
-  /* links: small chips with the site's name, opened in the browser (never in the box) */
-  .a a, .agent-card a { color: var(--link); text-decoration: none; cursor: pointer; padding: 0 5px; margin: 0 -1px; border-radius: 7px; background: var(--accent-soft);
-    box-shadow: inset 0 0 0 .5px var(--accent-line); -webkit-box-decoration-break: clone; box-decoration-break: clone; transition: background .2s, box-shadow .2s; }
-  .a a:is(:hover,.hot), .agent-card a:is(:hover,.hot) { background: rgba(47,210,122,.26); box-shadow: inset 0 0 0 1px var(--accent-line); }
-  .a a[data-host]:not([data-bare])::after, .agent-card a[data-host]:not([data-bare])::after { content: attr(data-host); margin-left: 5px; font-size: .74em; font-weight: 500; color: var(--fg3); }
-  .a a[data-bare], .agent-card a[data-bare] { font-size: 0; padding: 0; margin: 0; background: none; box-shadow: none; }   /* a bare link reads as ↗ its site, in its own chip */
-  .a a[data-bare]::before, .agent-card a[data-bare]::before { content: "↗ " attr(data-host); display: inline-block; padding: 0 6px; border-radius: 7px; font-size: 13px; line-height: 1.5; font-weight: 500;
-    background: var(--accent-soft); box-shadow: inset 0 0 0 .5px var(--accent-line); transition: background .2s; }
-  .a a[data-bare]:is(:hover,.hot)::before, .agent-card a[data-bare]:is(:hover,.hot)::before { background: rgba(47,210,122,.26); }
-  .a math { font-family: "STIX Two Math", math; font-size: 1.12em; } .a :is(math, .tex), .turn > .a :is(li, pre, code, th, td) { animation: word .5s var(--ease) both; }
+  /* links: underlined in Clover green, the site's name beside them; opened in the browser (never in the box) */
+  .a a, .agent-card a { --u: color-mix(in oklab, var(--accent) 40%, transparent); color: var(--accent-ink); text-decoration: none; cursor: pointer; padding-bottom: 1px;
+    background: linear-gradient(var(--u), var(--u)) 0 100% / 100% 1px no-repeat; transition: background-size 150ms ease; }
+  .a a:is(:hover,.hot), .agent-card a:is(:hover,.hot) { --u: currentColor; }
+  .a a[data-host]:not([data-bare])::after, .agent-card a[data-host]:not([data-bare])::after { content: attr(data-host); display: inline-block; margin-left: 5px; font-size: 12px; font-weight: 500; color: var(--ink-2); text-decoration: none; }
+  .a a[data-bare], .agent-card a[data-bare] { font-size: 0; background: none; padding: 0; }   /* a bare link reads as ↗ its site */
+  .a a[data-bare]::before, .agent-card a[data-bare]::before { content: "↗ " attr(data-host); font-size: 15px; font-weight: 500; padding-bottom: 1px;
+    background: linear-gradient(var(--u), var(--u)) 0 100% / 100% 1px no-repeat; }
+  .agent-card a[data-bare]::before { font-size: 13px; }
+  .a math { font-family: "STIX Two Math", math; font-size: 1.1em; } .a :is(math, .tex), .turn > .a :is(li, pre, code, th, td) { animation: word .5s var(--ease) both; }
   .a math[display=block] { margin: 12px 0; padding: 2px 0; overflow-x: auto; overflow-y: hidden; }
   .a math::-webkit-scrollbar { height: 0; }
-  .tex { font: 13px var(--mono); color: var(--fg); } .tex.block { display: block; margin: 6px 0; text-align: center; }
-  .a.agent-ack { display:flex; align-items:flex-start; gap:7px; }
-  .agent-ack canvas { width:24px; height:24px; margin:0; }
-  .agent-ack span { min-width:0; flex:1; }
-  .a .w { display: inline-block; animation: word .5s var(--ease) both; }
-  .a.cancel { color: var(--fg2); font-size: 12.5px; }
-  .a.stopped { display: flex; align-items: center; gap: 8px; color: var(--fg2); font-size: 12.5px; line-height: 16px; letter-spacing: .1px; }
+  .tex { font: 13px var(--mono); color: var(--ink); } .tex.block { display: block; margin: 6px 0; text-align: center; }
+  .a.agent-ack { display: flex; align-items: flex-start; gap: 8px; }
+  .agent-ack canvas { width: 22px; height: 22px; margin: 1px 0 0; }
+  .agent-ack span { min-width: 0; flex: 1; }
+  .a .w { display: inline-block; animation: word .42s var(--ease) both; }
+  .a.cancel { color: var(--ink-2); font-size: 13px; }
+  .a.stopped { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 13px; line-height: 18px; }
   .a:is(.stopped, .agent-ack) > :not(.w) + :not(.w) { margin-top: 0; }   /* the answer spacing rule pushed the label below its dot or orb */
-  .a.stopped i { flex: none; width: 7px; height: 7px; border-radius: 2px; background: var(--hy-petal); box-shadow: 0 0 8px rgba(255,126,182,.6);
-    animation: in .35s var(--spring) both; }
-  .step.cut { color: var(--fg2); text-decoration: line-through; text-decoration-color: var(--hair-2); }
+  .a.stopped i { flex: none; width: 7px; height: 7px; border-radius: 2px; background: var(--ink-3); animation: morph 220ms var(--ease) both; }
   /* the latest answer's actions: Copy, Read aloud, Follow up. Quiet until the pointer is over the box */
-  .acts { display: flex; gap: 2px; margin: 10px 0 0 -9px; opacity: .62; transition: opacity .25s var(--ease); }
-  .acts button { animation: in .4s var(--spring) both; } .acts button:nth-child(2) { animation-delay: .05s; } .acts button:nth-child(3) { animation-delay: .1s; }
+  .acts { display: flex; gap: 2px; margin: 10px 0 0 -9px; opacity: .72; transition: opacity 200ms ease; }
+  .acts button { animation: rise 240ms var(--ease) both; } .acts button:nth-child(2) { animation-delay: 40ms; } .acts button:nth-child(3) { animation-delay: 80ms; }
   body:is(:hover,.hot) .acts, .acts:focus-within { opacity: 1; }
   .turn:has(.rewrite) .acts, body.folded .acts { display: none; }
 
-  #x { position: relative; flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid;
-    place-items: center; opacity: .72;
-    background: radial-gradient(120% 120% at 30% 15%, rgba(255,255,255,.3), rgba(255,255,255,.07) 55%, rgba(255,255,255,.03));
-    box-shadow: inset 0 0 0 .5px var(--hair-2), inset 0 -1.5px 2px var(--shade), 0 2px 6px var(--shade);
-    transition: transform .45s var(--spring), opacity .25s, box-shadow .3s, background .3s; }
-  #x svg { width: 8px; height: 8px; stroke: var(--fg); stroke-width: 1.6; stroke-linecap: round; transition: transform .45s var(--spring); }
-  #x.hot { transform: scale(1.28); opacity: 1;
-    background: radial-gradient(120% 120% at 30% 15%, rgba(255,126,182,.55), rgba(255,126,182,.2) 55%, rgba(255,126,182,.08));
-    box-shadow: inset 0 0 0 .5px rgba(255,126,182,.7), inset 0 -1.5px 3px var(--shade), 0 0 0 4px rgba(255,126,182,.1), 0 4px 14px var(--shade); }
-  #x.hot svg { transform: rotate(90deg); }
-
-  /* safe mode: Clover asks before it deletes, sends or buys */
-  .ok { margin-top: 14px; padding: 13px 14px 14px; border-radius: 16px; background: var(--fill); cursor: pointer;
-    box-shadow: inset 0 0 0 .5px var(--hair), 0 8px 24px -16px var(--shade); animation: grow .5s var(--jelly) both; overflow: hidden; max-height: 320px;
-    transition: max-height .34s var(--ease), opacity .25s, margin .34s var(--ease), padding .34s var(--ease), background .2s; }
-  .ok:is(:hover,.hot) { background: var(--fill-2); }
-  .ok.gone { max-height: 0; opacity: 0; margin-top: 0; padding-top: 0; padding-bottom: 0; }
-  .ok b { display: block; font-size: 13.5px; font-weight: 600; }
-  .ok code { display: block; margin-top: 4px; font: 11px/15px var(--mono); color: var(--fg2); max-height: 15px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: max-height .34s var(--ease), color .2s; }
+  /* ── cards: Allow, Retry, Help improve, Paused, an agent's done card. One surface, one shadow, everything else is type ── */
+  .ok { margin-top: 14px; padding: 14px; border-radius: 14px; background: var(--surface); cursor: pointer; box-shadow: var(--shadow);
+    animation: grow var(--enter) var(--spring-soft) both; overflow: hidden; max-height: 320px; transform-origin: 50% 0;
+    transition: max-height 220ms var(--ease), opacity var(--exit) ease, transform var(--exit) var(--ease), margin 220ms var(--ease), padding 220ms var(--ease); }
+  .ok.gone { max-height: 0; opacity: 0; transform: scale(.98); margin-top: 0; padding-top: 0; padding-bottom: 0; }
+  .ok b { display: block; font-size: 15px; font-weight: 600; letter-spacing: -.12px; line-height: 1.35; }
+  .ok code { display: block; margin-top: 8px; padding: 7px 9px; border-radius: 8px; background: var(--fill); font: 12px/16px var(--mono); color: var(--ink-2); max-height: 16px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: max-height 260ms var(--ease), color 150ms ease; }
   .ok code.wrap { white-space: pre-wrap; overflow-wrap: anywhere; }
-  .ok code.full { max-height: 165px; overflow-y: auto; color: var(--fg); }
+  .ok code.full { max-height: 165px; overflow-y: auto; color: var(--ink); }
   .ok code::-webkit-scrollbar { width: 0; }
-  .ok div { display: flex; gap: 8px; margin-top: 11px; }
-  .ok button, .pk .bar button, .rewrite button { flex: 1; height: 28px; border: 0; border-radius: 14px; font: 500 12.5px var(--font); color: var(--fg);
-    cursor: pointer; background: var(--fill-2); box-shadow: inset 0 0 0 .5px var(--hair); transition: transform .3s var(--spring), background .2s; }
-  .ok button.go, .pk .bar button.go, .rewrite button.go { background: var(--accent); color: var(--on-accent); font-weight: 600; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.3), 0 4px 12px -4px rgba(47,210,122,.55); }
-  .ok button:is(:hover,.hot), .pk .bar button:is(:hover,.hot), .rewrite button:not(:disabled):is(:hover,.hot) { transform: scale(1.03); } .ok button:active, .pk .bar button:active, .rewrite button:not(:disabled):active { transform: scale(.96); }
+  .ok div { display: flex; gap: 8px; margin-top: 12px; }
+  .ok button, .pk .bar button, .rewrite button { flex: 1; height: 30px; border: 0; border-radius: 9px; font: 500 13px var(--font); color: var(--ink);
+    cursor: pointer; background: var(--fill-2); transition: transform var(--press) var(--ease), background-color 150ms ease, opacity 150ms ease; }
+  .ok button.go, .pk .bar button.go, .rewrite button.go { background: var(--accent-fill); color: var(--on-accent); font-weight: 600; box-shadow: 0 1px 2px rgba(29,27,24,.12); }
+  .ok button:is(:hover,.hot), .pk .bar button:is(:hover,.hot), .rewrite button:not(:disabled):is(:hover,.hot) { background: color-mix(in oklab, var(--ink) 10%, transparent); }
+  .ok button.go:is(:hover,.hot), .pk .bar button.go:is(:hover,.hot), .rewrite button.go:not(:disabled):is(:hover,.hot) { background: color-mix(in oklab, var(--accent-fill) 88%, var(--ink)); }
+  .ok button:active, .pk .bar button:active, .rewrite button:not(:disabled):active { transform: scale(.97); }
 
   /* "which one?": the AI isn't sure, so it shows its choices. Click one to see it big; click outside it for all of them again */
-  .pk { margin-top: 14px; padding: 13px 14px 14px; border-radius: 16px; background: var(--fill); box-shadow: inset 0 0 0 .5px var(--hair);
-    animation: grow .5s var(--jelly) both; overflow: hidden; max-height: 900px; cursor: default;
-    transition: max-height .34s var(--ease), opacity .25s, margin .34s var(--ease), padding .34s var(--ease); }
-  .pk.gone { max-height: 0; opacity: 0; margin-top: 0; padding-top: 0; padding-bottom: 0; }
-  .pk > b { display: block; margin-bottom: 10px; font-size: 13.5px; font-weight: 600; }
+  .pk { margin-top: 14px; padding: 14px; border-radius: 14px; background: var(--surface); box-shadow: var(--shadow);
+    animation: grow var(--enter) var(--spring-soft) both; overflow: hidden; max-height: 900px; cursor: default; transform-origin: 50% 0;
+    transition: max-height 220ms var(--ease), opacity var(--exit) ease, transform var(--exit) var(--ease), margin 220ms var(--ease), padding 220ms var(--ease); }
+  .pk.gone { max-height: 0; opacity: 0; transform: scale(.98); margin-top: 0; padding-top: 0; padding-bottom: 0; }
+  .pk > b { display: block; margin-bottom: 10px; font-size: 15px; font-weight: 600; letter-spacing: -.12px; }
   .pk :is(b, .n) > p { margin: 0; }
   .pk .g { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
-  .pk .g.list { grid-template-columns: minmax(0, 1fr); gap: 4px; }
-  /* many choices scroll inside the card, so the question and buttons stay in view on any display; the padding keeps the hover lift unclipped */
+  .pk .g.list { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  /* many choices scroll inside the card, so the question and buttons stay in view on any display; the padding keeps the press unclipped */
   .pk:not(.open) .g { max-height: clamp(96px, calc(var(--screen-height, 10000px) - 300px), 236px); overflow-y: auto; padding: 3px 5px; margin: -3px -5px; overscroll-behavior: contain; }
   .pk .g.list .n { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; line-height: 1.35; }
   .pk .c:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .pk .c { display: flex; flex-direction: column; gap: 3px; min-width: 0; margin: 0; padding: 5px 5px 7px; border: 0; border-radius: 12px; text-align: left;
-    font: inherit; color: inherit; cursor: pointer; background: var(--fill); box-shadow: inset 0 0 0 .5px var(--hair);
-    animation: in .4s var(--spring) both; transition: transform .3s var(--spring), background .2s, box-shadow .2s; }
-  .pk .g.list .c { padding: 8px 11px; }
-  .pk .c:is(:hover,.hot) { background: var(--fill-2); box-shadow: inset 0 0 0 .5px var(--accent-line); transform: scale(1.03); } .pk .c:active { transform: scale(.97); }
-  .pk .th { display: grid; place-items: center; aspect-ratio: 4 / 3; margin-bottom: 3px; border-radius: 8px; overflow: hidden; background: var(--shade);
-    font-size: 11px; font-weight: 600; letter-spacing: .4px; color: var(--fg2); transition: height .34s var(--ease); }
+  .pk .c { display: flex; flex-direction: column; gap: 3px; min-width: 0; margin: 0; padding: 5px 5px 7px; border: 0; border-radius: 10px; text-align: left;
+    font: inherit; color: inherit; cursor: pointer; background: var(--fill); box-shadow: inset 0 0 0 .5px var(--line);
+    animation: rise 240ms var(--ease) both; transition: transform var(--press) var(--ease), background-color 150ms ease, box-shadow 150ms ease; }
+  .pk .g.list .c { padding: 8px 10px; background: none; box-shadow: none; }
+  .pk .c:is(:hover,.hot) { background: var(--fill-2); box-shadow: inset 0 0 0 .5px var(--line-2); } .pk .c:active { transform: scale(.97); }
+  .pk .th { display: grid; place-items: center; aspect-ratio: 4 / 3; margin-bottom: 3px; border-radius: 7px; overflow: hidden; background: var(--fill-2);
+    font-size: 11px; font-weight: 600; letter-spacing: .3px; color: var(--ink-2); }
   .pk .th img { width: 100%; height: 100%; object-fit: contain; }
-  .pk .p { display: none; font-size: 10.5px; color: var(--fg2); overflow-wrap: anywhere; } .pk.open .c.on .p:not(:empty) { display: block; }
+  .pk .p { display: none; font-size: 12px; color: var(--ink-2); overflow-wrap: anywhere; } .pk.open .c.on .p:not(:empty) { display: block; }
   .pk .n, .pk .s { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .pk .n { font-size: 12px; color: var(--fg); } .pk .s { font-size: 10.5px; color: var(--fg2); } .pk .s:empty { display: none; }
+  .pk .n { font-size: 13px; color: var(--ink); } .pk .s { font-size: 12px; color: var(--ink-2); } .pk .s:empty { display: none; }
   .pk.open .c:not(.on), .pk.open .other { display: none; }
-  .pk .other { display: block; width: 100%; box-sizing: border-box; height: 30px; margin: 8px 0 0; padding: 0 11px; border: 0; border-radius: 10px; outline: none;
-    background: var(--fill); box-shadow: inset 0 0 0 .5px var(--hair); color: var(--fg); font: 12.5px var(--font); transition: box-shadow .2s, background .2s; }
-  .pk .other::placeholder { color: var(--fg2); }
-  .pk .other:focus { background: var(--fill-2); box-shadow: inset 0 0 0 1px var(--accent); }
-  .pk.open .c.on { grid-column: 1 / -1; transform: none; background: var(--fill); animation: grow .45s var(--jelly) both; }
+  .pk .other { display: block; width: 100%; box-sizing: border-box; height: 32px; margin: 8px 0 0; padding: 0 11px; border: 0; border-radius: 9px; outline: none;
+    background: var(--fill); box-shadow: inset 0 0 0 .5px var(--line); color: var(--ink); font: 13px var(--font); transition: box-shadow 150ms ease, background-color 150ms ease; }
+  .pk .other::placeholder { color: var(--ink-2); }
+  .pk .other:focus { background: var(--surface); box-shadow: inset 0 0 0 1px var(--accent), var(--ring); }
+  .pk.open .c.on { grid-column: 1 / -1; transform: none; background: var(--fill); animation: grow 280ms var(--spring-soft) both; }
   .pk.open .c.on .th { aspect-ratio: auto; height: 200px; }
-  .pk.open .c.on .n { font-size: 13px; } .pk.open .c.on .n, .pk.open .c.on .s { white-space: normal; overflow-wrap: anywhere; }
+  .pk.open .c.on .n { font-size: 15px; } .pk.open .c.on .n, .pk.open .c.on .s { white-space: normal; overflow-wrap: anywhere; }
   .pk .bar { display: flex; gap: 8px; margin-top: 10px; }
   .pk:not(.open) .bar :is(.back, .go), .pk.open .bar .none { display: none; }
 
   .a.draft { white-space: pre-wrap; }
-  .rewrite { display: flex; gap: 8px; margin-top: 16px; }
+  .rewrite { display: flex; gap: 8px; margin-top: 14px; animation: rise var(--enter) var(--ease) both; }
   .rewrite button:disabled { opacity: .45; cursor: default; } .turn:has(.rewrite) .redo { display: none; }   /* the bar has its own Try again */
-  .rewrite-note { color: var(--fg2); font-size: 12px; margin-top: 10px; }
-  .rewrite button.del { background: #cf3442; color: #fff; }
-  .sel { font-size: 11.5px; color: var(--fg2); margin-bottom: 10px; padding-left: 8px; border-left: 2px solid var(--hy-clover); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rewrite-note { color: var(--ink-2); font-size: 13px; margin-top: 10px; animation: rise 220ms var(--ease) both; }
+  .rewrite button.del, .rewrite button.del:not(:disabled):is(:hover,.hot) { background: var(--danger); color: var(--on-danger); }
+  .sel { font-size: 13px; color: var(--ink-2); margin-bottom: 10px; padding-left: 9px; border-left: 2px solid var(--sage); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-  /* safe mode off: a small tag says so; clicking it turns safe mode back on */
-  #mode { flex: none; display: none; align-items: center; gap: 5px; height: 22px; padding: 0 9px;
-    box-sizing: border-box; border-radius: 11px; font-size: 11px; font-weight: 500; line-height: 1; color: var(--warn); cursor: pointer;
-    background: rgba(255,181,71,.13); box-shadow: inset 0 0 0 .5px rgba(255,181,71,.34); transition: transform .3s var(--spring), background .2s; }
-  #mode::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--warn); }
-  #mode.on { display: flex; animation: in .35s var(--ease) both; } #mode:is(:hover,.hot) { transform: scale(1.05); background: rgba(255,181,71,.18); }
+  /* safe mode off: a small warm tag says so; clicking it turns safe mode back on */
+  #mode { flex: none; display: none; align-items: center; gap: 6px; height: 22px; padding: 0 9px;
+    box-sizing: border-box; border-radius: 11px; font-size: 12px; font-weight: 500; line-height: 1; color: var(--warn-ink); cursor: pointer;
+    background: var(--sun-soft); transition: transform var(--press) var(--ease), background-color 150ms ease; }
+  #mode::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--sun); }
+  #mode.on { display: flex; animation: rise 220ms var(--ease) both; } #mode:is(:hover,.hot) { background: color-mix(in oklab, var(--sun) 30%, transparent); }
+  #mode:active { transform: scale(.97); }
+  :root[data-theme="dark"] #mode:is(:hover,.hot) { background: var(--sun-soft); box-shadow: inset 0 0 0 .5px color-mix(in oklab, var(--sun) 50%, transparent); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #mode:is(:hover,.hot) { background: var(--sun-soft); box-shadow: inset 0 0 0 .5px color-mix(in oklab, var(--sun) 50%, transparent); } }
   #mode:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
   /* tip: once in a while, one quiet line under the answer */
-  .tip { display: flex; align-items: baseline; gap: 7px; width: fit-content; max-width: 100%; margin-top: 14px; padding: 7px 12px 7px 10px; box-sizing: border-box;
-    border-radius: 13px; font-size: 12px; line-height: 1.4; color: var(--fg); background: var(--accent-soft); box-shadow: inset 0 0 0 .5px var(--accent-line);
-    animation: pop .6s var(--jelly) .4s both; }
-  .tip::before { content: attr(data-k); flex: none; font-weight: 650; color: var(--accent-text); }
-  .tip.learned { background: rgba(255,209,102,.13); box-shadow: inset 0 0 0 .5px rgba(255,209,102,.45); } .tip.learned::before { color: var(--sun-text); }
-  .tip .off, .ok .details { flex: none; margin-left: auto; padding: 0; border: 0; background: none; font: 500 11px var(--font); color: var(--fg2); cursor: pointer; transition: color .2s; }
-  .tip .off:is(:hover,.hot), .ok .details:is(:hover,.hot) { color: var(--fg); }
-  .ok.offer { cursor: default; } .ok.offer:is(:hover,.hot) { background: var(--fill); }   /* a question, not a command: nothing to unfold */
-  .ok.offer p { margin: 4px 0 0; font-size: 12px; line-height: 1.4; color: var(--fg2); }
-  .ok.offer .details { display: block; margin: 9px auto 0; height: auto; flex: none; border-radius: 0; background: none; box-shadow: none; }
-  /* the GitHub line: a little star, petal-pink, an ask not a hint */
-  .tip.cheer { cursor: pointer; background: var(--petal-soft); box-shadow: inset 0 0 0 .5px rgba(255,126,182,.4); } .tip.cheer::before { color: var(--hy-sun); text-shadow: 0 0 8px rgba(255,209,102,.6); }
+  .tip { display: flex; align-items: baseline; gap: 8px; width: fit-content; max-width: 100%; margin-top: 12px; padding: 7px 12px; box-sizing: border-box;
+    border-radius: 10px; font-size: 13px; line-height: 1.4; color: var(--ink); background: var(--fill);
+    animation: rise 300ms var(--ease) 300ms both; transition: opacity var(--exit) ease, transform var(--exit) var(--ease); }
+  .tip::before { content: attr(data-k); flex: none; font-weight: 600; color: var(--accent-ink); }
+  .tip.learned { background: var(--sun-soft); } .tip.learned::before { color: var(--warn-ink); }
+  .tip .off, .ok .details { flex: none; margin-left: auto; padding: 0; border: 0; background: none; font: 500 12px var(--font); color: var(--ink-2); cursor: pointer; transition: color 150ms ease; }
+  .tip .off:is(:hover,.hot), .ok .details:is(:hover,.hot) { color: var(--ink); }
+  .ok.offer { cursor: default; }   /* a question, not a command: nothing to unfold */
+  .ok.offer p { margin: 4px 0 0; font-size: 13px; line-height: 1.45; color: var(--ink-2); }
+  .ok.offer .details { display: block; margin: 10px auto 0; height: auto; flex: none; border-radius: 0; background: none; box-shadow: none; }
+  /* the GitHub line: Clover's one cute detail, a petal-pink note with a little sun star */
+  .tip.cheer { cursor: pointer; background: var(--petal-soft); } .tip.cheer::before { color: var(--star); }
   .tip.cheer .support { border: 0; padding: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: 4px; }
-  .tip.cheer:is(:hover,.hot) { background: rgba(255,126,182,.24); box-shadow: inset 0 0 0 1px rgba(255,126,182,.6); }
-  .tip.cheer .support:is(:hover,.hot) { background: rgba(255,126,182,.18); }
-  .tip.cheer .support:focus-visible { outline: 2px solid var(--hy-petal); outline-offset: 3px; }
-  .tip.gone { opacity: 0; transform: translateY(-4px); transition: opacity .4s, transform .4s; }
+  .tip.cheer:is(:hover,.hot) { background: color-mix(in oklab, var(--petal) 36%, transparent); }
+  .tip.cheer .support:focus-visible { outline: 2px solid var(--petal); outline-offset: 3px; }
+  .tip.gone { opacity: 0; transform: translateY(-3px); }
 
   /* memory receipt: one quiet row under an answer that remembered or forgot something. Click: it opens in place; click an item: Settings → Memory there */
-  .mem { margin-top: 12px; animation: in .35s var(--ease) .15s both; }
-  .mem-h { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0; border: 0; cursor: pointer;
-    font: 500 12px var(--font); color: var(--fg2); background: none; transition: color .2s; }
-  .mem-h:is(:hover,.hot), .mem.open .mem-h { color: var(--fg); }
-  .mem-h .ic { width: 14px; height: 14px; flex: none; border-radius: 50%; display: grid; place-items: center; background: rgba(47,210,122,.22); }
+  .mem { margin-top: 12px; animation: rise 240ms var(--ease) 120ms both; }
+  .mem-h { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0; border: 0; cursor: pointer;
+    font: 500 13px var(--font); color: var(--ink-2); background: none; transition: color 150ms ease; }
+  .mem-h:is(:hover,.hot), .mem.open .mem-h { color: var(--ink); }
+  .mem-h .ic { width: 16px; height: 16px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); }
   .mem.off .mem-h .ic { background: var(--fill-2); }
   .mem svg { fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-  .mem-h .ic svg { width: 8px; height: 8px; stroke: var(--ok); } .mem.off .mem-h .ic svg { stroke: var(--fg3); }
-  .mem.off .mem-h b { text-decoration: line-through; text-decoration-color: var(--fg3); }
-  .mem-h b { font-weight: 500; } .mem-h .cat { color: var(--fg2); }
-  .mem-h .chev { width: 8px; height: 8px; stroke: currentColor; opacity: .7; transition: transform .38s var(--spring); }
+  .mem-h .ic svg { width: 9px; height: 9px; stroke: var(--accent-ink); } .mem.off .mem-h .ic svg { stroke: var(--ink-2); }
+  .mem.off .mem-h b { text-decoration: line-through; text-decoration-color: var(--ink-3); }
+  .mem-h b { font-weight: 500; } .mem-h .cat { color: var(--ink-2); }
+  .mem-h .chev { width: 8px; height: 8px; stroke: currentColor; opacity: .7; transition: transform 260ms var(--spring-soft); }
   .mem.open .mem-h .chev { transform: rotate(90deg); }
-  .mem-b { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows .36s var(--ease), opacity .24s var(--ease); }
+  .mem-b { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows 280ms var(--ease), opacity 200ms var(--ease); }
   .mem.open .mem-b { grid-template-rows: 1fr; opacity: 1; }
   .mem-b > div { min-height: 0; overflow: hidden; }
-  .mem-card { margin-top: 6px; padding: 4px; border-radius: 14px; background: var(--fill); box-shadow: inset 0 0 0 .5px var(--hair); }
-  .mem-c { padding: 6px 9px 2px; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--fg2); }
-  .mem-i { display: flex; align-items: baseline; gap: 8px; width: 100%; padding: 6px 9px; border: 0; border-radius: 9px; text-align: left; cursor: pointer;
-    font: 12.5px/1.4 var(--font); color: var(--fg); background: none; opacity: 0; transform: translateY(-4px);
-    transition: background .15s, opacity .25s var(--ease), transform .36s var(--ease); }
-  .mem.open .mem-i { opacity: 1; transform: none; transition-delay: 0s, calc(60ms + var(--i) * 35ms), calc(60ms + var(--i) * 35ms); }
+  .mem-card { margin-top: 6px; padding: 4px; border-radius: 12px; background: var(--fill); box-shadow: inset 0 0 0 .5px var(--line); }
+  .mem-c { padding: 6px 9px 2px; font-size: 12px; font-weight: 600; color: var(--ink-2); }
+  .mem-i { display: flex; align-items: baseline; gap: 8px; width: 100%; padding: 6px 9px; border: 0; border-radius: 8px; text-align: left; cursor: pointer;
+    font: 13px/1.4 var(--font); color: var(--ink); background: none; opacity: 0; transform: translateY(-3px);
+    transition: background-color 150ms ease, opacity 200ms var(--ease), transform 260ms var(--ease); }
+  .mem.open .mem-i { opacity: 1; transform: none; transition-delay: 0s, calc(50ms + var(--i) * 30ms), calc(50ms + var(--i) * 30ms); }
   .mem-i:is(:hover,.hot) { background: var(--fill-2); }
-  .mem-i svg { width: 9px; height: 9px; flex: none; stroke: var(--ok); transform: translateY(1px); }
-  .mem-i.del svg { stroke: var(--fg3); } .mem-i.del span { color: var(--fg2); text-decoration: line-through; }
+  .mem-i svg { width: 9px; height: 9px; flex: none; stroke: var(--accent-ink); transform: translateY(1px); }
+  .mem-i.del svg { stroke: var(--ink-2); } .mem-i.del span { color: var(--ink-2); text-decoration: line-through; }
   .mem-i span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-  .mem-i em { flex: none; font: 500 11px var(--font); color: var(--fg2); opacity: 0; transition: opacity .2s; }
+  .mem-i em { flex: none; font: 500 12px var(--font); font-style: normal; color: var(--ink-2); opacity: 0; transition: opacity 150ms ease; }
   .mem-i:is(:hover,.hot) em, .mem-i:focus-visible em { opacity: 1; }
 
-  /* typing box: grows in on hover (or the shortcut, in typing mode); the mic goes back to voice */
-  #comp { position: relative; display: flex; align-items: center; gap: 8px; margin-top: 0; height: 0; opacity: 0; overflow: hidden; flex: none; transition: height .3s var(--spring), margin .3s var(--spring), padding .3s var(--spring), opacity .18s; }
-  #comp.open { height: 36px; margin: 10px -4px 0; padding: 4px; opacity: 1; }   /* 4px of room inside the clip: round tops, shadows and the hover scale aren't cut flat */
-  #model, #models button { flex: none; height: 34px; max-width: 132px; padding: 0 12px; border: 0; border-radius: 17px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    font: 500 12px var(--font); color: var(--fg2); background: var(--fill-2); box-shadow: inset 0 0 0 .5px var(--hair);
-    transition: color .2s, background .25s, opacity .22s var(--ease), transform .38s var(--ease); }
-  #model:is(:hover,.hot), #models button:is(:hover,.hot) { color: var(--fg); }
+  /* ── the typing row: grows in on hover (or the shortcut, in typing mode); the mic goes back to voice ── */
+  #comp { position: relative; display: flex; align-items: center; gap: 6px; margin-top: 0; height: 0; opacity: 0; overflow: hidden; flex: none; transition: height 220ms var(--ease), margin 220ms var(--ease), padding 220ms var(--ease), opacity 160ms ease; }
+  #comp.open { height: 36px; margin: 10px -4px 0; padding: 4px; opacity: 1; }   /* 4px of room inside the clip: round corners, rings and the press aren't cut flat */
+  #model, #models button { flex: none; height: 34px; max-width: 132px; padding: 0 12px; border: 0; border-radius: 10px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font: 500 13px var(--font); color: var(--ink-2); background: var(--fill); box-shadow: inset 0 0 0 .5px var(--line);
+    transition: color 150ms ease, background-color 150ms ease, opacity 200ms var(--ease), transform 280ms var(--ease); }
+  #model:is(:hover,.hot), #models button:is(:hover,.hot) { color: var(--ink); background: var(--fill-2); }
+  #model:active { transform: scale(.97); }
   /* the model row: the choices fan out of the chip while the field and mic fade back; a click mid-way just reverses */
   #models { position: absolute; inset: 1px 0; display: flex; justify-content: flex-end; gap: 6px; overflow-x: auto; scrollbar-width: none; pointer-events: none; }
-  #models button { opacity: 0; transform: translateX(var(--dx, 0px)) scale(.9); transition-duration: .2s, .25s, .12s, .3s; }   /* folding back: labels fade before they overlap */
-  #models button.on { color: var(--on-accent); background: var(--accent); }
+  #models button { opacity: 0; transform: translateX(var(--dx, 0px)) scale(.92); transition-duration: 150ms, 150ms, 110ms, 220ms; }   /* folding back: labels fade before they overlap */
+  #models button.on { color: var(--on-accent); background: var(--accent-fill); box-shadow: none; }
   #comp.pick #models { pointer-events: auto; }
-  #comp.pick #models button { opacity: 1; transform: none; transition-duration: .2s, .25s, .22s, .38s; transition-delay: 0s, 0s, calc(var(--i) * 30ms), calc(var(--i) * 30ms); }
-  #ask { transform-origin: left center; } #comp.pick #ask { opacity: 0; transform: scale(.97); pointer-events: none; }
-  #comp.pick #model, #comp.pick #point, #comp.pick #mic { opacity: 0; transform: scale(.8); pointer-events: none; }
-  #ask { flex: 1; min-width: 0; height: 34px; box-sizing: border-box; padding: 0 13px; border: 0; outline: 0; border-radius: 17px;
-    font: 13.5px var(--font); color: var(--fg); caret-color: var(--hy-clover); -webkit-user-select: text; cursor: text;
-    background: var(--fill-2); box-shadow: inset 0 0 0 .5px var(--hair); transition: background .25s, box-shadow .25s, opacity .22s var(--ease), transform .38s var(--ease); }
-  #ask::placeholder { color: var(--fg2); }
-  #ask:focus { background: var(--fill-3); box-shadow: inset 0 0 0 .5px var(--accent-line), 0 0 0 3px rgba(47,210,122,.3); }
-  #point, #mic { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 0; padding: 0; display: grid; place-items: center; cursor: pointer;
-    background: radial-gradient(120% 120% at 30% 15%, rgba(255,255,255,.26), rgba(255,255,255,.07) 60%);
-    box-shadow: inset 0 0 0 .5px var(--hair-2), 0 2px 6px var(--shade); transition: transform .35s var(--spring), background .25s, opacity .22s var(--ease); }
-  #point:is(:hover,.hot), #mic:is(:hover,.hot) { transform: scale(1.1); background: radial-gradient(120% 120% at 30% 15%, rgba(139,245,200,.45), rgba(47,210,122,.16) 60%); }
+  #comp.pick #models button { opacity: 1; transform: none; transition-duration: 150ms, 150ms, 200ms, 280ms; transition-delay: 0s, 0s, calc(var(--i) * 30ms), calc(var(--i) * 30ms); }
+  #ask { transform-origin: left center; } #comp.pick #ask { opacity: 0; transform: scale(.98); pointer-events: none; }
+  #comp.pick #model, #comp.pick #point, #comp.pick #mic { opacity: 0; transform: scale(.9); pointer-events: none; }
+  #ask { flex: 1; min-width: 0; height: 34px; box-sizing: border-box; padding: 0 12px; border: 0; outline: 0; border-radius: 10px;
+    font: 15px var(--font); letter-spacing: -.12px; color: var(--ink); caret-color: var(--accent); -webkit-user-select: text; cursor: text;
+    background: var(--surface); box-shadow: inset 0 0 0 .5px var(--line-2), 0 1px 2px rgba(29,27,24,.04); transition: box-shadow 150ms ease, opacity 200ms var(--ease), transform 280ms var(--ease); }
+  #ask::placeholder { color: var(--ink-2); }
+  #ask:focus { box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 70%, transparent), var(--ring); }
+  #point, #mic { flex: none; width: 34px; height: 34px; border-radius: 10px; border: 0; padding: 0; display: grid; place-items: center; cursor: pointer; color: var(--ink-2);
+    background: var(--fill); box-shadow: inset 0 0 0 .5px var(--line); transition: transform var(--press) var(--ease), background-color 150ms ease, color 150ms ease, opacity 200ms var(--ease); }
+  #point:is(:hover,.hot), #mic:is(:hover,.hot) { color: var(--ink); background: var(--fill-2); }
   #point:active, #mic:active { transform: scale(.94); }
-  #point svg, #mic svg { width: 15px; height: 15px; fill: none; stroke: var(--fg); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-  #point.active, #point.marked { background: var(--accent); } #point.active svg, #point.marked svg { stroke: var(--on-accent); }
+  #point svg, #mic svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  #point.active, #point.marked { background: var(--accent-fill); color: var(--on-accent); box-shadow: none; }
   /* Point at your screen: one row over the typing box. on: the hint; marked: the crop's chip; coach: the one-time intro */
-  #pointbar { display: none; align-items: center; gap: 8px; min-height: 28px; margin-top: 12px; font: 12px var(--font); color: var(--fg2); }
-  #pointbar[data-s] { display: flex; animation: in .3s var(--spring) both; }
-  #pointbar .hint { flex: 1; min-width: 0; line-height: 1.35; } #pointbar .hint b { color: var(--fg); font-weight: 600; }
+  #pointbar { display: none; align-items: center; gap: 8px; min-height: 28px; margin-top: 12px; font: 13px/1.4 var(--font); color: var(--ink-2); }
+  #pointbar[data-s] { display: flex; animation: rise 240ms var(--ease) both; }
+  #pointbar .hint { flex: 1; min-width: 0; line-height: 1.4; } #pointbar .hint b { color: var(--ink); font-weight: 600; }
   #pointbar .hint svg, #pointbar .chip i svg { width: 13px; height: 13px; margin: 0 1px -2px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   #pointbar .keys { margin: 0 0 0 auto; }
-  #pointbar .chip { display: none; align-items: center; gap: 7px; height: 28px; padding: 0 3px 0 3px; border-radius: 10px; color: var(--fg);
-    background: var(--fill-2); box-shadow: inset 0 0 0 .5px var(--hair); }
-  #pointbar .chip img, #pointbar .chip i { flex: none; width: 34px; height: 22px; border-radius: 7px; object-fit: cover; display: grid; place-items: center; background: var(--fill-2); }
+  #pointbar .chip { display: none; align-items: center; gap: 7px; height: 30px; padding: 0 3px; border-radius: 9px; color: var(--ink);
+    background: var(--surface); box-shadow: var(--shadow-sm); animation: grow 240ms var(--spring-soft) both; }
+  #pointbar .chip img, #pointbar .chip i { flex: none; width: 36px; height: 24px; border-radius: 6px; object-fit: cover; display: grid; place-items: center; background: var(--fill-2); }
   #pointbar .chip img[hidden], #pointbar .chip img:not([hidden]) + i { display: none; }
-  #pointbar .rm { width: 22px; height: 22px; padding: 0; border: 0; border-radius: 7px; display: grid; place-items: center; background: none; color: var(--fg2); cursor: pointer; }
-  #pointbar .rm:is(:hover,.hot) { color: var(--fg); background: var(--fill-2); } #pointbar .rm svg { width: 9px; height: 9px; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+  #pointbar .rm { width: 24px; height: 24px; padding: 0; border: 0; border-radius: 7px; display: grid; place-items: center; background: none; color: var(--ink-2); cursor: pointer;
+    transition: background-color 150ms ease, color 150ms ease, transform var(--press) var(--ease); }
+  #pointbar .rm:is(:hover,.hot) { color: var(--ink); background: var(--fill-2); } #pointbar .rm:active { transform: scale(.94); }
+  #pointbar .rm svg { width: 9px; height: 9px; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
   #pointbar.has .chip { display: inline-flex; } #pointbar.has .hint { display: none; }
   #pointbar:not([data-s=coach]) .gotit { display: none; }
-  #pointbar[data-s=coach] + #comp #point { box-shadow: inset 0 0 0 .5px var(--hair-2), 0 0 0 2px var(--hy-clover); }
+  #pointbar[data-s=coach] + #comp #point { box-shadow: inset 0 0 0 1.5px var(--accent); }
 
   /* resize: drag the bottom-right corner */
-  #grip { position: absolute; right: 4px; bottom: 4px; width: 12px; height: 12px; opacity: 0; transition: opacity .25s; cursor: nwse-resize; }
+  #grip { position: absolute; right: 4px; bottom: 4px; width: 12px; height: 12px; opacity: 0; transition: opacity 200ms ease; cursor: nwse-resize; }
   .e { position: fixed; z-index: 3; }
   #eL, #eR { top: 0; bottom: 0; width: 6px; cursor: ew-resize; } #eL { left: 0; } #eR { right: 0; }
   #eT, #eB { left: 0; right: 0; height: 6px; cursor: ns-resize; } #eT { top: 0; } #eB { bottom: 0; }
   #cTL, #cTR, #cBL, #cBR { width: 14px; height: 14px; z-index: 4; }
   #cTL { top: 0; left: 0; cursor: nwse-resize; } #cBR { bottom: 0; right: 0; cursor: nwse-resize; }
   #cTR { top: 0; right: 0; cursor: nesw-resize; } #cBL { bottom: 0; left: 0; cursor: nesw-resize; }
-  body:is(:hover,.hot) #grip { opacity: .45; }
-  #grip svg { width: 12px; height: 12px; stroke: var(--fg); stroke-width: 1.2; stroke-linecap: round; }
+  body:is(:hover,.hot) #grip { opacity: .4; }
+  #grip svg { width: 12px; height: 12px; stroke: var(--ink-2); stroke-width: 1.2; stroke-linecap: round; }
 
-  @keyframes grow { from { opacity: 0; transform: translateY(-6px) scale(.96); } }
-  @keyframes pop { from { opacity: 0; transform: scale(.94) translateY(-6px); } to { opacity: 1; transform: none; } }
-  @keyframes bubble { from { opacity: 0; transform: scale(.82) translateY(6px); } to { opacity: 1; transform: none; } }
-  @keyframes stepin { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
-  @keyframes in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
-  @keyframes word { from { opacity: 0; filter: blur(5px); transform: translateY(3px); } to { opacity: 1; filter: none; transform: none; } }
-  @keyframes fade { from { opacity: 0; } }
-  @keyframes morph { from { opacity: 0; transform: scale(.5); } }
-  @keyframes pulse { 50% { opacity: .35; } }
-  @keyframes blink { 50% { opacity: 0; } }
-  @keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
-  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-  /* agents: a quiet badge in the header, count + live dot; it opens the Agent view */
-  #agents-pill { flex:none; white-space:nowrap; display:inline-flex; align-items:center; gap:6px; height:22px; padding:0 9px 0 8px; border:0; border-radius:11px;
-    background:var(--fill); box-shadow:inset 0 0 0 .5px var(--hair); color:var(--fg2); font:500 11px var(--font);
-    font-variant-numeric:tabular-nums; cursor:pointer; overflow:hidden; animation:pop .5s var(--jelly) both; transition:background .2s, transform .3s var(--spring); }
-  #agents-pill span { white-space:nowrap; }   /* "1 agent" stays on one line; #status beside it gives up the room */
-  #agents-pill[hidden] { display:none; } #agents-pill:is(:hover,.hot) { background:var(--fill-2); color:var(--fg); } #agents-pill:active { transform:scale(.95); }
-  #agents-pill i { flex:none; width:6px; height:6px; border-radius:50%; background:var(--hy-clover); box-shadow:0 0 6px rgba(47,210,122,.8); animation:pulse 1.8s ease-in-out infinite; }
-  #agents-pill.attention i { background:var(--hy-petal); box-shadow:0 0 6px rgba(255,126,182,.8); }
-  /* keycap actions (Raycast-style): label + the key that does it; one clover-green main action */
-  .keys, .ok .keys { display:flex; justify-content:flex-end; align-items:center; gap:6px; margin-top:14px; }
-  .ok .keys button, .keys button { flex:none; height:28px; padding:0 6px 0 11px; border-radius:9px; display:inline-flex; align-items:center; gap:7px;
-    background:transparent; box-shadow:none; color:var(--fg2); font:500 12.5px var(--font); }
-  .ok .keys button:is(:hover,.hot), .keys button:is(:hover,.hot) { background:var(--fill-2); color:var(--fg); transform:none; }
-  .ok .keys button.go, .keys button.go { background:var(--accent); color:var(--on-accent); font-weight:600; padding-right:5px; } .ok .keys button.go:is(:hover,.hot) { background:var(--hy-mint); }
-  .ok .keys button:active { transform:scale(.97); } .keys button:disabled { opacity:.6; cursor:default; }
-  kbd { min-width:20px; height:18px; padding:0 5px; box-sizing:border-box; border-radius:5px; display:inline-grid; place-items:center; font:500 10.5px var(--font);
-    color:var(--fg); background:var(--fill); box-shadow:inset 0 0 0 .5px var(--hair), 0 1px 0 var(--shade); }
-  .go kbd { color:var(--on-accent); background:rgba(11,31,23,.1); box-shadow:inset 0 0 0 .5px rgba(11,31,23,.25); }
-  .agent-card .usage { color:var(--fg2); font-size:10px; margin-top:9px; font-variant-numeric:tabular-nums; }
-  .agent-card .eyebrow { display:flex; align-items:center; gap:6px; margin:0 0 5px; font-size:10.5px; line-height:14px; font-weight:600; letter-spacing:.2px; color:var(--fg2); }
-  .agent-card .eyebrow i { flex:none; width:6px; height:6px; border-radius:50%; background:var(--hy-mint); box-shadow:0 0 8px rgba(139,245,200,.7); animation:pulse 1.8s ease-in-out infinite; }
-  .agent-card.done .eyebrow i { background:var(--hy-clover); box-shadow:0 0 8px rgba(47,210,122,.6); animation:none; }
-  .agent-card .made { display:grid; grid-template-columns:minmax(0,1fr); gap:6px; margin-top:10px; }
-  .agent-card .made button { flex:none; display:flex; align-items:center; gap:10px; box-sizing:border-box; min-width:0; width:100%; height:auto; padding:7px 9px 7px 7px; border-radius:12px; text-align:left;
-    background:var(--fill); font-weight:400; } .agent-card .made button:is(:hover,.hot) { transform:none; background:var(--fill-2); } .agent-card .made button:is(:hover,.hot) small { color:var(--fg); }
-  .agent-card .made i { width:28px; height:28px; border-radius:9px; flex:none; display:grid; place-items:center; background:var(--fill-2); }
-  .agent-card .made button:first-child i { background:linear-gradient(135deg, var(--hy-clover), var(--hy-clover-deep)); box-shadow:0 3px 10px rgba(47,210,122,.35); }
-  .agent-card .made svg { width:14px; height:14px; fill:none; stroke:var(--fg); stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
-  .agent-card .made button:first-child svg { stroke:#fff; }
-  .agent-card .made span { min-width:0; flex:1; } .agent-card .made b, .agent-card .made small { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .agent-card .made b { font-size:12.5px; font-weight:600; } .agent-card .made small { margin-top:1px; font-size:10.5px; color:var(--fg2); }
-  .agent-card .keys button:not(:has(kbd)) { padding:0 11px; }
-  .agent-card .made .out { width:12px; height:12px; flex:none; stroke:var(--fg2); } .agent-card .made button:is(:hover,.hot) .out { stroke:var(--fg); }
+  /* ── the timer row: how long Clover worked, in tabular figures; hands-free sits beside it ── */
+  .elapsed { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 14px; color: var(--ink-2); font-size: 12px; line-height: 18px; animation: rise 220ms var(--ease) both; }
+  .elapsed b { color: var(--ink-2); font-weight: 400; font-variant-numeric: tabular-nums; letter-spacing: 0; white-space: nowrap; }
+  .elapsed .redo { margin-left: auto; height: 24px; padding: 0 9px; border: 0; border-radius: 7px; background: none; font: 500 12px var(--font); color: var(--ink-2); cursor: pointer;
+    transition: color 150ms ease, background-color 150ms ease, transform var(--press) var(--ease); }
+  .elapsed .redo:is(:hover,.hot) { color: var(--ink); background: var(--fill-2); } .elapsed .redo:active { transform: scale(.97); }
+  /* hands-free: a small pill with a breathing clover, and how to end it */
+  .elapsed .hf { display: inline-flex; align-items: center; gap: 6px; margin-left: 4px; height: 24px; padding: 0 10px 0 6px; border-radius: 12px; box-sizing: border-box;
+    background: var(--accent-soft); color: var(--ink); font: 500 12px var(--font); animation: grow 280ms var(--spring-soft) both; }
+  .hf .hf-clover { width: 14px; height: 14px; flex: none; animation: leafbreath 2.4s ease-in-out infinite; }
+  .hf .hf-clover path { fill: var(--accent); } .hf .hf-clover circle { fill: var(--sage); }
+  .hf .hf-l { color: var(--ink-2); font-weight: 400; } .hf .hf-l i { font-style: normal; animation: hfdot 1.5s infinite both; }
+  .hf .hf-l i:nth-child(2) { animation-delay: .2s; } .hf .hf-l i:nth-child(3) { animation-delay: .4s; }
+  .hf-hint { flex-basis: 100%; margin: 0; color: var(--ink-2); font-size: 12px; }
+  .elapsed .hf ~ .hf-hint { animation: rise 260ms var(--ease) 160ms both; }
+
+  /* ── agents: a quiet badge in the header, count + live dot; it opens the Agent view ── */
+  #agents-pill { flex: none; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 9px 0 8px; border: 0; border-radius: 11px;
+    background: var(--fill); box-shadow: inset 0 0 0 .5px var(--line); color: var(--ink-2); font: 500 12px var(--font); box-sizing: border-box;
+    font-variant-numeric: tabular-nums; cursor: pointer; overflow: hidden; animation: grow 240ms var(--spring-soft) both;
+    transition: background-color 150ms ease, color 150ms ease, transform var(--press) var(--ease); }
+  #agents-pill span { white-space: nowrap; }   /* "1 agent" stays on one line; #status beside it gives up the room */
+  #agents-pill[hidden] { display: none; } #agents-pill:is(:hover,.hot) { background: var(--fill-2); color: var(--ink); } #agents-pill:active { transform: scale(.97); }
+  #agents-pill i { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: breathe 1.8s ease-in-out infinite; }
+  #agents-pill.attention i { background: var(--sun); }
+  /* keycap actions (Raycast-style): label + the key that does it; one green main action */
+  .keys, .ok .keys { display: flex; justify-content: flex-end; align-items: center; gap: 6px; margin-top: 14px; }
+  .ok .keys button, .keys button { flex: none; height: 30px; padding: 0 6px 0 11px; border-radius: 9px; display: inline-flex; align-items: center; gap: 7px;
+    background: transparent; box-shadow: none; color: var(--ink-2); font: 500 13px var(--font); }
+  .ok .keys button:is(:hover,.hot), .keys button:is(:hover,.hot) { background: var(--fill-2); color: var(--ink); }
+  .ok .keys button.go, .keys button.go { background: var(--accent-fill); color: var(--on-accent); font-weight: 600; padding-right: 5px; }
+  .ok .keys button.go:is(:hover,.hot), .keys button.go:is(:hover,.hot) { background: color-mix(in oklab, var(--accent-fill) 88%, var(--ink)); color: var(--on-accent); }
+  .ok .keys button:active, .keys button:active { transform: scale(.97); } .keys button:disabled { opacity: .6; cursor: default; }
+  .keys button:not(:has(kbd)) { padding: 0 11px; }
+  kbd { min-width: 20px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 5px; display: inline-grid; place-items: center; font: 500 11px var(--font);
+    color: var(--ink-2); background: var(--fill-2); box-shadow: inset 0 -.5px 0 var(--line-2); }
+  .go kbd { color: var(--on-accent); background: var(--go-kbd); box-shadow: none; }
+  .agent-card .usage { color: var(--ink-2); font-size: 12px; margin-top: 10px; font-variant-numeric: tabular-nums; }
+  .agent-card .eyebrow { display: flex; align-items: center; gap: 6px; margin: 0 0 4px; font-size: 12px; line-height: 16px; font-weight: 500; color: var(--ink-2); }
+  .agent-card .eyebrow i { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: breathe 1.8s ease-in-out infinite; }
+  .agent-card.done .eyebrow i { animation: none; }
+  .agent-card .made { display: grid; grid-template-columns: minmax(0,1fr); gap: 4px; margin-top: 12px; }
+  .agent-card .made button { flex: none; display: flex; align-items: center; gap: 10px; box-sizing: border-box; min-width: 0; width: 100%; height: auto; padding: 7px 9px 7px 7px; border-radius: 10px; text-align: left;
+    background: var(--fill); font-weight: 400; } .agent-card .made button:is(:hover,.hot) { background: var(--fill-2); } .agent-card .made button:is(:hover,.hot) small { color: var(--ink); }
+  .agent-card .made i { width: 28px; height: 28px; border-radius: 8px; flex: none; display: grid; place-items: center; background: var(--surface); box-shadow: var(--shadow-sm); }
+  .agent-card .made button:first-child i { background: var(--accent-soft); box-shadow: none; }
+  .agent-card .made svg { width: 14px; height: 14px; fill: none; stroke: var(--ink-2); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .agent-card .made button:first-child svg { stroke: var(--accent-ink); }
+  .agent-card .made span { min-width: 0; flex: 1; } .agent-card .made b, .agent-card .made small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .agent-card .made b { font-size: 13px; font-weight: 600; } .agent-card .made small { margin-top: 1px; font-size: 12px; color: var(--ink-2); }
+  .agent-card .made .out { width: 12px; height: 12px; flex: none; stroke: var(--ink-3); } .agent-card .made button:is(:hover,.hot) .out { stroke: var(--ink); }
   /* the agent's answer leads the done card, read like any answer; long ones scroll inside so its actions stay in view */
-  .agent-card { max-height:900px; }   /* not none: a card folding away (.gone) can only animate from a length */
-  .agent-card .a { display:block; margin-top:8px; max-height:min(260px, calc(var(--screen-height, 10000px) - 300px)); overflow-y:auto; font-size:13.5px; line-height:1.55; cursor:default; }
-  .agent-card .a::-webkit-scrollbar { width:0; } .agent-card .a.more { -webkit-mask-image:linear-gradient(to bottom, #000 calc(100% - 28px), transparent); }
-  .agent-card .a :is(div, p) { display:block; margin-top:0; font-size:inherit; line-height:inherit; color:inherit; }
-  .agent-card .a code { display:inline; max-height:none; margin:0; white-space:normal; font:12.5px var(--mono); color:inherit; }
-  .agent-card .a .code-head { display:flex; margin-top:8px; } .agent-card .a pre code { white-space:pre; }
+  .agent-card { max-height: 900px; }   /* not none: a card folding away (.gone) can only animate from a length */
+  .agent-card .a { display: block; margin-top: 8px; max-height: min(260px, calc(var(--screen-height, 10000px) - 300px)); overflow-y: auto; font-size: 13px; line-height: 1.55; cursor: default; }
+  .agent-card .a::-webkit-scrollbar { width: 0; } .agent-card .a.more { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); }
+  .agent-card .a :is(div, p) { display: block; margin-top: 0; font-size: inherit; line-height: inherit; color: inherit; }
+  .agent-card .a code { display: inline; max-height: none; margin: 0; padding: 1px 5px; white-space: normal; font: 12px var(--mono); color: inherit; }
+  .agent-card .a .code-head { display: flex; margin-top: 8px; } .agent-card .a pre code { white-space: pre; padding: 0; }
   /* swipe-down hint on a card that can be put away with two fingers */
-  .agent-card::before { content: ""; position: absolute; left: 50%; top: 5px; width: 28px; height: 3px; margin-left: -14px; border-radius: 2px; background: var(--fill-3); opacity: 0; transition: opacity .25s; }
+  .agent-card::before { content: ""; position: absolute; left: 50%; top: 5px; width: 28px; height: 3px; margin-left: -14px; border-radius: 2px; background: var(--line-2); opacity: 0; transition: opacity 200ms ease; }
   .agent-card { position: relative; } .agent-card:is(:hover,.hot)::before { opacity: 1; }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  @keyframes boxin { from { opacity: 0; transform: translateY(-3px) scale(.985); } }
+  @keyframes grow { from { opacity: 0; transform: translateY(4px) scale(.97); } }
+  @keyframes rise { from { opacity: 0; transform: translateY(4px); } }
+  @keyframes bubble { from { opacity: 0; transform: translateY(4px) scale(.96); } }
+  @keyframes stepin { from { opacity: 0; transform: translateY(4px); } }
+  @keyframes statusin { from { opacity: 0; transform: translateY(2px); } }
+  @keyframes word { from { opacity: 0; filter: blur(2px); transform: translateY(2px); } to { opacity: 1; filter: none; transform: none; } }
+  @keyframes lw { from { opacity: 0; filter: blur(2px); } }
+  @keyframes fade { from { opacity: 0; } }
+  @keyframes morph { from { opacity: 0; transform: scale(.8); } }
+  @keyframes tick { from { clip-path: inset(0 100% 0 0); } }
+  @keyframes breathe { 50% { opacity: .4; } }
+  @keyframes leafbreath { 50% { transform: scale(.9) rotate(8deg); } }
+  @keyframes hfdot { 0% { opacity: 0; } 25%, 60% { opacity: 1; } 85%, 100% { opacity: 0; } }   /* dots fade in one by one, then out */
+  @keyframes sheen { from { background-position: 100% 0; } to { background-position: -150% 0; } }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
-    #status.live span { background: none; color: var(--fg); }
+    #status.live span { background: none; color: var(--ink-2); }
+    /* fewer and gentler, not none: things still cross-fade in, nothing slides or bounces */
+    #card:not(.again), .turn, .q, .ok, .pk, .tip, .mem, .rewrite, .elapsed, .acts button, #pointbar[data-s] { animation: fade 160ms ease both !important; }
+    .ok, .pk, .tip { transition: opacity 160ms ease !important; } .ok.gone, .pk.gone, .tip.gone { transform: none; }
     body.dictate #orb { animation: fade .2s both !important; } body.dictate :is(#check, .dn) { animation: fade .2s both !important; }   /* the pill's states cross-fade */
     .mini { transform: none !important; transition: opacity .2s !important; }
     .mini-point { animation: none !important; transition: opacity .2s !important; }
@@ -527,6 +565,24 @@
   reduced.addEventListener('change',()=>{if(reduced.matches)document.querySelectorAll('.step').forEach(e=>e.getAnimations().forEach(a=>a.cancel()));});
   let visible = true;
   let preset = E.r('breathing', S), state = 'breathing', boost = 1, t = 0, prev = performance.now(), heard = 0, voice = 0, settleOrb = 0;
+  // The voice, on springs. Each leaf and each bar of the dictation wave follows the level with its own response, so they move together
+  // but never in lockstep; a spring keeps its velocity, so a new level mid-motion just bends the curve (no restarts, no jitter).
+  // response: seconds to (mostly) arrive; zeta: damping ratio (.6–.7 a little alive, 1 no overshoot).
+  const springTo = (s, goal, dt, zeta) => { const w = 2 * Math.PI / s.r; for (let left = dt; left > 1e-6; left -= .008) { const h = Math.min(.008, left); s.v += (w * w * (goal - s.x) - 2 * zeta * w * s.v) * h; s.x += s.v * h; } };
+  const leafSprings = [.13, .17, .15, .19].map(r => ({ x: 0, v: 0, r }));
+  const barSprings = Array.from({ length: 9 }, (_, i) => ({ x: 0, v: 0, r: .1 + .012 * Math.abs(i - 4), shown: -1 }));
+  const ENVELOPE = [.36, .54, .72, .88, 1, .88, .72, .54, .36];   // the wave rises from the middle out
+  let waveOn = false;
+  const waveFrame = (dt, now) => {   // transform only: nine scaleY writes, and only when a bar actually moved
+    const s = now / 1000, kids = $('dictwave').children;
+    barSprings.forEach((b, i) => {
+      const idle = .06 * (.5 + .5 * Math.sin(s * 2.2 - i * .6));   // silence: a slow, low ripple, so it still reads as listening
+      const voiced = heard * ENVELOPE[i] * (.7 + .3 * Math.sin(s * (6.5 + i * .8) + i * 1.3));
+      if (reduced.matches) { b.x = heard * ENVELOPE[i]; b.v = 0; } else springTo(b, Math.max(idle, voiced), dt, .7);
+      const y = .17 + .83 * Math.max(0, Math.min(1, b.x));
+      if (kids[i] && Math.abs(y - b.shown) > .002) { b.shown = y; kids[i].style.transform = `scaleY(${y.toFixed(3)})`; }
+    });
+  };
   const setState = s => {   // done glows for a moment, then the clover rests; leaving listening lets the leaves settle
     clearTimeout(settleOrb); if (s === 'done') settleOrb = setTimeout(() => setState('breathing'), 2600);
     if (s !== 'listening') heard = 0;
@@ -535,10 +591,16 @@
   const lightQ = matchMedia('(prefers-color-scheme: light)'), darkGlass = () => document.documentElement.dataset.theme ? document.documentElement.dataset.theme === 'dark' : !lightQ.matches;
   (function frame(now) {
     if (visible) {
-      t += Math.min(0.05, (now - prev) / 1000) * preset.speed * boost * (reduced.matches ? 0 : 1);
-      voice += (heard - voice) * (reduced.matches ? 1 : 0.3);   // the leaves follow the voice, smoothed
+      const dt = Math.min(0.05, (now - prev) / 1000);
+      t += dt * preset.speed * boost * (reduced.matches ? 0 : 1);
+      leafSprings.forEach((s, k) => { if (reduced.matches) { s.x = heard; s.v = 0; } else springTo(s, heard * (.8 + .2 * Math.sin(t * 5.3 + k * 2.1)), dt, .62); });   // the leaves answer the voice
+      voice = leafSprings.reduce((sum, s) => sum + Math.max(0, s.x), 0) / 4;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, S, S);
-      E.p(ctx, E.M[preset.mode](S, t, voice > 0.004 ? { ...preset.opts, level: voice } : preset.opts), darkGlass(), null);
+      E.p(ctx, E.M[preset.mode](S, t, voice > 0.004 ? { ...preset.opts, level: voice, levels: leafSprings.map(s => s.x) } : preset.opts), darkGlass(), null);
+      const hearingWave = document.body.classList.contains('dictate') && document.body.classList.contains('hearing');
+      if (hearingWave && !waveOn) barSprings.forEach(b => { b.x = b.v = 0; b.shown = -1; });   // a new dictation's wave starts flat
+      if (hearingWave) waveFrame(dt, now);
+      waveOn = hearingWave;
     }
     prev = now;
     setTimeout(() => requestAnimationFrame(frame), visible && !reduced.matches ? 0 : 250);
@@ -553,7 +615,7 @@
   const dictateMode = on => {
     foldBox(false);
     document.body.classList.toggle('dictate', !!on); document.body.classList.remove('locked', 'hearing'); $('thread').querySelectorAll('.turn.dict').forEach(e => e.remove());
-    for (const b of $('dictwave').children) b.style.height = ''; pill('');
+    for (const b of $('dictwave').children) b.style.height = b.style.transform = ''; pill('');
   };
   for (let i = 0; i < 9; i++) $('dictwave').append(document.createElement('i'));
   const post = m => webkit.messageHandlers.c.postMessage(m);
@@ -575,8 +637,28 @@
     if (!on) $('thread').scrollTop = foldedScroll;
   };
   $('fold').onclick = () => foldBox(!folded);
+  // The box's height, on a critically damped spring: the panel takes each posted height at once, so the page posts a few in a row and
+  // the box grows and folds smoothly instead of jumping. The pill (native animates it), a drag-resize, a hidden box, Reduce Motion and
+  // the first size of a new box go straight through.
+  let boxH = 0, boxV = 0, boxGoal = 0, boxFrame = 0, boxAt = 0;
+  const boxStep = now => {
+    const dt = Math.min(.034, (now - boxAt) / 1000); boxAt = now;
+    springTo(Object.assign(boxStep.s, { x: boxH, v: boxV }), boxGoal, dt, 1); boxH = boxStep.s.x; boxV = boxStep.s.v;
+    const settled = Math.abs(boxGoal - boxH) < .5 && Math.abs(boxV) < 8;
+    if (settled) { boxH = boxGoal; boxV = 0; boxFrame = 0; } else boxFrame = requestAnimationFrame(boxStep);
+    webkit.messageHandlers.h.postMessage(Math.round(boxH));
+  };
+  boxStep.s = { x: 0, v: 0, r: .3 };
+  const sizeBox = size => {
+    if (Array.isArray(size) || !boxH || !visible || reduced.matches || $('card').classList.contains('held')) {
+      cancelAnimationFrame(boxFrame); boxFrame = 0; boxV = 0; boxH = boxGoal = Array.isArray(size) ? 0 : size;
+      return webkit.messageHandlers.h.postMessage(size);
+    }
+    if (size === boxGoal) return;
+    boxGoal = size; if (!boxFrame) { boxAt = performance.now(); boxFrame = requestAnimationFrame(boxStep); }
+  };
   const fit = (follow = true) => {
-    const card = $('card'); webkit.messageHandlers.h.postMessage(document.body.classList.contains('dictate') ? [card.offsetWidth, card.offsetHeight] : card.offsetHeight);   // the dictation pill sizes its width too
+    const card = $('card'); sizeBox(document.body.classList.contains('dictate') ? [card.offsetWidth, card.offsetHeight] : card.offsetHeight);   // the dictation pill sizes its width too
     if (!folded && follow && atBottom) $('thread').scrollTop = $('thread').scrollHeight;
     miniRect();
     const enabled=!!defaultButton();if(enabled!==defaultEnabled){defaultEnabled=enabled;post({agentDefault:enabled});}
@@ -661,6 +743,7 @@
   $('mic').onclick = () => { $('ask').value = ''; comp(false); post({ mic: 1 }); };
   const status = (s, live) => {
     if (s && listening) s = 'Listening…';   // early AI notes never replace it while the user talks
+    if ($('status').firstChild?.textContent === s && $('status').classList.contains('live') === !!live) return;   // the same line again: no re-entrance
     $('status').className = live ? 'live' : '';
     $('status').innerHTML = '<span></span>'; $('status').firstChild.textContent = s;
   };
@@ -729,6 +812,21 @@
       copy.onclick = e => { e.stopPropagation(); post({ copy: pre.textContent }); flash(copy, 'Copied'); };
       pre.before(head);
     }
+  };
+  // Your words while you talk: a word already shown stays (a revision only swaps its text), new words fade in, and the newest one
+  // stays light while it may still change (.tail). Plain text nodes and spans we make; never HTML.
+  const liveWords = (q, text) => {
+    const pieces = String(text).split(/(\s+)/).filter(Boolean), kids = [...q.childNodes];
+    let i = 0;
+    for (; i < pieces.length && i < kids.length; i++) {
+      const space = /^\s/.test(pieces[i]), k = kids[i];
+      if (space ? k.nodeType !== 3 : !k.classList?.contains('lw')) break;
+      if (k.textContent !== pieces[i]) k.textContent = pieces[i];
+    }
+    kids.slice(i).forEach(k => k.remove());
+    for (const piece of pieces.slice(i)) q.append(/^\s/.test(piece) ? piece : el('span', 'lw', piece));
+    q.querySelectorAll('.lw.tail').forEach(n => n.classList.remove('tail'));
+    q.querySelector('.lw:last-of-type')?.classList.add('tail');
   };
   const answerActions = a => {   // only the latest answer offers them
     $('thread').querySelectorAll('.acts').forEach(e => e.remove());
@@ -987,7 +1085,7 @@
     finished() { clockStop(); miniFinish(false); unstream(); },
     dictate(on) { dictateMode(on); },   // the last dictation's wave must not show on the next; its empty turn never reaches the box
     locked(on) { document.body.classList.toggle('locked', !!on); fit(false); },   // a double tap: hands-free until the next press; the pill makes room for the lock
-    visible(on) { visible = on; if (!on) { clockStop(); miniClear(); } fit(false); },
+    visible(on) { visible = on; boxH = 0; if (!on) { clockStop(); miniClear(); } fit(false); },   // shown again: the box takes its size at once, then springs
     limit(h) {
       const value = h + 'px';
       if ($('card').style.getPropertyValue('--screen-height') === value) return;
@@ -1033,16 +1131,14 @@
       $('thread').append(d); atBottom = true;   // a new ask: back to following the newest
       setState('listening'); boost = 1; status('Listening…', true); fit();
     },
-    level(v) {
-      v = Math.min(1, Math.max(0, v)); heard = state === 'listening' ? v : 0;
-      boost = 0.5 + v * 2.5; $('orb').style.transform = `scale(${1 + v * .1})`;
-      const bars = [...$('dictwave').children], heights = bars.map(b => b.style.height || '3px');
-      const wave = Math.sqrt(Math.max(0, v - .02) / .98);   // a quiet voice still fills the pill; room noise stays flat
-      bars.forEach((b, i) => b.style.height = i === bars.length - 1 ? `${3 + wave * 23}px` : heights[i + 1]);
+    level(v) {   // 0–1 from the mic; the leaves and the wave follow it on their springs (frame above)
+      v = Math.min(1, Math.max(0, +v || 0));
+      heard = state === 'listening' ? Math.sqrt(Math.max(0, v - .02) / .98) : 0;   // a quiet voice still moves them; room noise stays flat
+      if (reduced.matches && document.body.classList.contains('hearing')) waveFrame(0, performance.now());   // no springs: the bars just show the level
     },
     words(w) {
       const q = part('q'); if (!q) return;
-      q.classList.toggle('empty', !w.trim()); q.textContent = w;
+      q.classList.toggle('empty', !w.trim()); liveWords(q, w);
       fit();
     },
     think() {
@@ -1103,7 +1199,7 @@
         const d = document.createElement('div'); d.className = 'step live'; d.innerHTML = '<span></span>'; d.firstChild.textContent = s;
         st.append(d);
         while (st.children.length > 4) { st.firstChild.remove(); st.dataset.more = (+st.dataset.more || 0) + 1; }   // long tasks: a quiet count, not a wall of steps
-        if (positions) for (const e of st.children) e.animate([{transform:`translateY(${positions.has(e) ? positions.get(e).top - e.getBoundingClientRect().top : 19}px)`,opacity:positions.get(e)?.opacity??0},{transform:'none',opacity:1}],{duration:350,easing:'cubic-bezier(.2,.8,.2,1)'});
+        if (positions) for (const e of st.children) e.animate([{transform:`translateY(${positions.has(e) ? positions.get(e).top - e.getBoundingClientRect().top : 19}px)`,opacity:positions.get(e)?.opacity??0},{transform:'none',opacity:1}],{duration:280,easing:'cubic-bezier(.23,1,.32,1)'});
         }
         status(s, true);
         setState(/^(Searching|Reading|Looking|Taking|Checking|Finding|Waiting)/.test(s) ? 'searching' : /^(Moving|Opening|Using|Clicking|Scrolling|Pressing|Dragging|Typing)/.test(s) ? 'working' : 'connecting');
@@ -1168,6 +1264,7 @@
       const el = document.elementFromPoint(x, y), b = el?.closest('a[href], .ok button, .ok, .pk button, .pk, .rewrite button, .code-head button, .acts button, .mini-view, .mem-i, .mem-h, .mem, .shot, #pointbar button, .redo, #fold, #agents-pill, .dn button, .tip .support');
       const field = el?.closest('.ok input, .ok textarea, .pk input, .pk textarea');   // "Something else…": a text field in a card takes the cursor
       if (field) return field.focus();
+      if (b?.matches?.('button:not(.mini-view, .c)')) b.animate?.([{ transform: 'scale(.97)' }, { transform: 'none' }], { duration: 200, easing: 'cubic-bezier(.23, 1, .32, 1)' });   // a press the eye can see
       if (b) return b.click();
       if (folded) return;
       if (document.body.classList.contains('dictate')) return;   // the pill has no typing box: only its buttons act
@@ -1324,7 +1421,12 @@
       return !!x || !!m && getComputedStyle(m).cursor === 'pointer';
     },
     gestures(on) { gesturesOn = !!on; if (!on) unswipe(); },   // trackpad swipes and pinches (on unless the app turns them off)
-    theme(t) { if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme; },   // 'auto': follow the system
+    theme(t) {   // 'auto': follow the system. The switch eases over a quarter second instead of flashing
+      const root = document.documentElement, was = root.dataset.theme || '';
+      if ((t === 'light' || t === 'dark' ? t : '') === was) return;
+      if (!reduced.matches) { root.classList.add('theming'); clearTimeout(window.ui.themeT); window.ui.themeT = setTimeout(() => root.classList.remove('theming'), 300); }
+      if (t === 'light' || t === 'dark') root.dataset.theme = t; else delete root.dataset.theme;
+    },
     speaking(on) { setState(on ? 'speaking' : 'breathing'); },   // the orb talks while the answer is read aloud
     copied() { status('Copied to clipboard'); setTimeout(() => $('status').textContent === 'Copied to clipboard' && status(''), 1400); },
   };

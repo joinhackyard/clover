@@ -2037,6 +2037,7 @@ final class App: NSObject, WKScriptMessageHandler {
         }
     }
     var handsFree = false, followUp = false, wakeSleeping = false, wakeInactive = false, wakeHeard = false
+    var followAppearance: (() -> Void)?
     var wakeSuspended: Bool { wakeSleeping || wakeInactive }
     let wakeMic = Mic()
     var wakeRecognizer: SFSpeechRecognizer?
@@ -2431,6 +2432,17 @@ final class App: NSObject, WKScriptMessageHandler {
         let tint = NSView(frame:web.frame); tint.wantsLayer = true; tint.autoresizingMask = [.width,.height]
         tint.layer?.backgroundColor = NSColor(calibratedRed:18/255,green:18/255,blue:20/255,alpha:0.85).cgColor   // light enough for the blur to show; measured over white it keeps small text AA (tests/contrast.html)
         bg.addSubview(tint); bg.addSubview(mini.clip)
+        // The box follows the Mac's light or dark appearance: dark glass at night, warm paper by day.
+        followAppearance = { [weak self] in
+            let dark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            bg.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+            tint.layer?.backgroundColor = (dark ? NSColor(calibratedRed: 18/255, green: 18/255, blue: 20/255, alpha: 0.85)
+                                                : NSColor(calibratedRed: 251/255, green: 248/255, blue: 243/255, alpha: 0.9)).cgColor
+            self?.js("theme", dark ? "dark" : "light")
+        }
+        DistributedNotificationCenter.default().addObserver(forName: .init("AppleInterfaceThemeChangedNotification"), object: nil, queue: .main) { [weak self] _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { self?.followAppearance?() }   // the new appearance settles a moment after the notice
+        }
         mini.publish = { [weak self] value in self?.js("mini",value) }
         mini.captureAllowed = { agentsUI.mini.target == nil }
         bg.addSubview(web)
@@ -2603,7 +2615,7 @@ final class App: NSObject, WKScriptMessageHandler {
             if b["pointClear"] != nil { if drawing.hasInput { drawing.clearInput() } else { clearPointContext() } }   // a drawn mark, or a selected one of Clover's
             if b["pointCoached"] != nil { Prefs.set("pointCoached", true) }
             if b["mic"] != nil && (!busy || retryOffer) && (!engine.isRunning || quietFollowUp) { if quietFollowUp { hush() }; clickMicrophone() }
-            if b["ready"] != nil { js("size", Prefs.num("boxH")); js("gestures", Prefs.bool("gestures")); if Prefs.bool("tips") && !Prefs.bool("pointCoached") { js("pointCoach") } }
+            if b["ready"] != nil { js("size", Prefs.num("boxH")); js("gestures", Prefs.bool("gestures")); followAppearance?(); if Prefs.bool("tips") && !Prefs.bool("pointCoached") { js("pointCoach") } }
             if b["close"] != nil { close(clear: true) }   // the box swiped away with two fingers, like its ✕
             if b["speak"] != nil {   // the answer's Read aloud button: one answer, whatever the Read answers aloud setting says
                 let last = answer.hasPrefix("✓ ") ? String(answer.dropFirst(2)) : answer
@@ -4705,7 +4717,7 @@ final class Onboarding: NSObject, WKScriptMessageHandler, NSWindowDelegate {
         }
         if b["do"] == "connectors" { return Onboarding.connectors { [weak self] c in self?.call("ob.connectors", c) } }
         if b["do"] == "set", let k = b["k"], let v = b["v"] {   // the feature pages' switches and choices
-            let choices = ["routing": ["cheapest", "balanced", "capable"], "dictateMode": ["verbatim", "cleanup"]]
+            let choices = ["routing": ["cheapest", "balanced", "capable"], "dictateMode": ["verbatim", "cleanup"], "permissionMode": ["ask", "auto", "bypass"]]
             if ["meeting", "draw", "improve"].contains(k) { Clover.settings.apply(k, v == "true") } else if choices[k]?.contains(v) == true { Clover.settings.apply(k, v) } else { return }
             Clover.settings.push(); return push()
         }

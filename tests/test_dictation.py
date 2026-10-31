@@ -687,7 +687,7 @@ if (!answer.classList.contains('old')) process.exit(console.error('a real ask no
         self.assertIn('opacity: 0', ring)
         self.assertIn('transition: opacity', ring)
         self.assertIn('pointer-events: none', ring)
-        self.assertIn('255,209,102', ring)   # Hackyard's sun (--hy-sun): locked reads warm, never as an error
+        self.assertIn('244,199,107', ring)   # Clover's sun (--sun #F4C76B): locked reads warm, never as an error
         self.assertIn('body.dictate.locked::after { opacity: 1; }', page)
         self.assertIn("locked(on) { document.body.classList.toggle('locked', !!on); fit(false); }", page)   # the pill makes room for the lock
         reduce = page[page.index('@media (prefers-reduced-motion: reduce)'):page.index('</style>')]
