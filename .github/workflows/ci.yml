@@ -40,7 +40,7 @@ jobs:
   macos:
     name: Build Clover.app (macOS 26)
     runs-on: macos-26
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - name: Compile and package
@@ -54,6 +54,14 @@ jobs:
           exit $status
       - name: Native self-test
         run: '"$RUNNER_TEMP/dist/Clover.app/Contents/MacOS/Clover" --selftest'
+      - name: macOS-only regressions (WebKit pages, Swift harnesses)
+        shell: bash
+        run: |
+          set +e
+          python3 -m unittest discover -s tests 2>&1 | tee "$RUNNER_TEMP/tests.log"
+          status=${PIPESTATUS[0]}
+          python3 .github/annotate.py tests "$RUNNER_TEMP/tests.log" $status
+          exit $status
       - name: Zip the app
         run: ditto -c -k --keepParent "$RUNNER_TEMP/dist/Clover.app" "$RUNNER_TEMP/Clover-macOS.zip"
       - uses: actions/upload-artifact@v4
