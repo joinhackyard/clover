@@ -1,0 +1,38 @@
+<!doctype html>
+<!-- README banner (docs/banner.png, 2400×900). Render: chrome-headless-shell --headless --hide-scrollbars --allow-file-access-from-files --window-size=1200,450 --force-device-scale-factor=2 --virtual-time-budget=4000 --screenshot=docs/banner.png file://$PWD/scripts/banner.html
+     banner-clover.png is clover_mark(800, color=(251,244,232)) from make_art.py -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Clover Banner</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&display=block" rel="stylesheet">
+<style>
+  :root { --bg: #2E9E6A; --cream: #FBF4E8; --cream-2: #D9EEDF; --deep: #1A6B46; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1200px; height: 450px; overflow: hidden; background: var(--bg); }
+  body { font-family: "Nunito", -apple-system, system-ui, sans-serif; color: var(--cream); -webkit-font-smoothing: antialiased; position: relative; }
+
+  .text { position: absolute; left: 96px; top: 50%; transform: translateY(-50%); }
+  h1 { font-size: 132px; font-weight: 800; letter-spacing: -0.03em; line-height: .9; }
+  p { margin-top: 18px; font-size: 34px; font-weight: 700; letter-spacing: -0.008em; color: var(--cream-2); }
+  .keys { margin-top: 30px; display: flex; align-items: center; gap: 8px; font-size: 19px; font-weight: 700; color: var(--cream-2); }
+  kbd { font: 800 17px/1 "Nunito", sans-serif; color: var(--deep); min-width: 34px; height: 32px; padding: 0 11px;
+        display: inline-grid; place-items: center; background: var(--cream); border-radius: 9px; box-shadow: 0 3px 0 var(--deep); }
+
+  /* the buddy peeks up from the bottom edge */
+  .buddy { position: absolute; right: 70px; bottom: -150px; width: 440px; height: 440px; transform: rotate(-10deg); }
+  .buddy img { width: 100%; height: 100%; }
+  .hi { position: absolute; right: 448px; top: 150px; background: var(--cream); color: var(--deep); font-size: 22px; font-weight: 800;
+        padding: 10px 18px 12px; border-radius: 22px 22px 6px 22px; }
+</style>
+</head>
+<body>
+  <div class="text">
+    <h1>Clover</h1>
+    <p>Your whole Mac, one sentence away.</p>
+    <div class="keys">Hold <kbd>⌃</kbd><kbd>⌥</kbd><kbd>space</kbd>&nbsp;or just say “Clover”</div>
+  </div>
+  <span class="hi">psst, just ask!</span>
+  <div class="buddy"><img src="banner-clover.png" alt=""></div>
+</body>
+</html>
