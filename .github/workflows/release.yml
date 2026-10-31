@@ -1,5 +1,5 @@
 name: Release
-# Publishes the version in VERSION as a GitHub release (tag, notes, zipped app and checksum) once.
+# Publishes the version in VERSION as a GitHub release (tag, notes, zipped app and checksum), once per version.
 on:
   push:
     branches: [main]
