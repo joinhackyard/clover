@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Clover's icon, drawn from code (Pillow) so the art is Hackyard's own. Run: python3 scripts/make_art.py
-The README banner and social preview are scripts/banner.html and scripts/social-preview.html."""
+"""Clover's icon and README banner, drawn from code (Pillow) so the art is Hackyard's own. Run: python3 scripts/make_art.py"""
 import math
 import os
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 CLOVER, DEEP, MINT, PETAL, INK = (47, 210, 122), (14, 159, 90), (139, 245, 200), (255, 126, 182), (11, 31, 23)
@@ -91,11 +90,34 @@ def icon(size=1024):
     return canvas
 
 
+def banner(w=2400, h=900):
+    img = Image.new('RGBA', (w, h), INK + (255,))
+    glow = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+    g = ImageDraw.Draw(glow)
+    g.ellipse((w * 0.02, -h * 0.4, w * 0.62, h * 1.1), fill=CLOVER + (70,))
+    g.ellipse((w * 0.55, h * 0.3, w * 1.1, h * 1.5), fill=PETAL + (45,))
+    img.alpha_composite(glow.filter(ImageFilter.GaussianBlur(160)))
+    ic = icon(560)
+    img.alpha_composite(ic, (int(w * 0.07), (h - 560) // 2))
+    d = ImageDraw.Draw(img)
+    def font(size, bold=False):
+        for f in ('/System/Library/Fonts/SFNS.ttf', '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf' if bold else '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'):
+            if os.path.exists(f): return ImageFont.truetype(f, size)
+        return ImageFont.load_default()
+    x = int(w * 0.36)
+    d.text((x, h * 0.25), 'Clover', font=font(190, True), fill=(255, 255, 255))
+    d.text((x + 6, h * 0.25 + 215), 'by Hackyard', font=font(64), fill=PETAL)
+    d.text((x + 6, h * 0.25 + 320), 'Your whole Mac, one sentence away.', font=font(62), fill=(205, 240, 222))
+    d.text((x + 6, h * 0.25 + 410), 'Talk · Point · Draw · Hands-free · Any AI', font=font(44), fill=MINT)
+    return img.convert('RGB')
+
+
 def main():
     os.makedirs(os.path.join(ROOT, 'docs'), exist_ok=True)
     big = icon(1024)
     big.save(os.path.join(ROOT, 'docs', 'icon.png'))
     big.save(os.path.join(ROOT, 'ui', 'AppIcon.icns'), sizes=[(16, 16), (32, 32), (64, 64), (128, 128), (256, 256), (512, 512), (1024, 1024)])
+    banner().save(os.path.join(ROOT, 'docs', 'banner.png'), optimize=True)
 
 
 if __name__ == '__main__':
